@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from 'framer-motion'
 import { Check, Plus, Trash2, Flame, Sparkles, CheckCircle2, ChevronRight, Pencil, X, Calendar, Clock, AlertCircle, RefreshCw, Shield, ShieldAlert, Bell, BellRing } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
 
