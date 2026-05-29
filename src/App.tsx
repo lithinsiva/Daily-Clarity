@@ -1,1384 +1,403 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { motion } from 'framer-motion'
-import { Check, Plus, Trash2, Flame, Sparkles, CheckCircle2, ChevronRight, Pencil, X, Calendar, Clock, AlertCircle, RefreshCw, Shield, ShieldAlert, Bell, BellRing } from "lucide-react";
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
+import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { 
+  LayoutDashboard, 
+  CheckSquare, 
+  Clock, 
+  BrainCircuit, 
+  TrendingUp, 
+  Plus, 
+  Trash2, 
+  CheckCircle2, 
+  Circle,
+  AlertCircle,
+  Sparkles,
+  Send,
+  User,
+  Bot
+} from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 
-
-interface Habit {
-  id: string;
-  name: string;
-  isCustom: boolean;
-  isNonNegotiable?: boolean;
-}
-
-interface DailyHabitTrackerProps {
-  isDarkMode: boolean;
-  theme: {
-    card: string;
-    text: string;
-    title: string;
-    subText: string;
-    badge: string;
-    input: string;
-    btn: string;
-    border: string;
-    accentText: string;
-    subtleLabel: string;
-    affiliateLink: string;
-  };
-
-}
-
-const DEFAULT_HABITS: Habit[] = [
-  { id: "water", name: "Drink sufficient water 💧", isCustom: false, isNonNegotiable: true },
-  { id: "move", name: "Move body & stretch 🏃", isCustom: false, isNonNegotiable: true },
-  { id: "breathe", name: "Mindful breathing (3m) 🧘", isCustom: false },
-  { id: "sunset", name: "Digital sunset (screens off) 📵", isCustom: false }
+// Mock Data for Analytics
+const initialPerformanceData = [
+  { day: "Mon", clarity: 65, tasks: 4 },
+  { day: "Tue", clarity: 70, tasks: 5 },
+  { day: "Wed", clarity: 80, tasks: 7 },
+  { day: "Thu", clarity: 75, tasks: 6 },
+  { day: "Fri", clarity: 85, tasks: 8 },
+  { day: "Sat", clarity: 90, tasks: 9 },
+  { day: "Sun", clarity: 95, tasks: 7 },
 ];
 
-export default function DailyHabitTracker({ isDarkMode, theme, onExportReport }: DailyHabitTrackerProps) {
-  // Load initial habits list (defaults + custom ones from localStorage)
-  const [habits, setHabits] = useState<Habit[]>(() => {
-    try {
-      const savedHabits = localStorage.getItem("dc_wellness_habits");
-      if (savedHabits) {
-        return JSON.parse(savedHabits);
-      }
-    } catch (e) {
-      console.error("Error reading habits from localStorage", e);
-    }
-    return DEFAULT_HABITS;
-  });
-
-  // Load habit completion history: { "YYYY-MM-DD": ["habitId1", "habitId2"] }
-  const [completionHistory, setCompletionHistory] = useState<Record<string, string[]>>(() => {
-    try {
-      const savedHistory = localStorage.getItem("dc_habit_history");
-      if (savedHistory) {
-        return JSON.parse(savedHistory);
-      }
-    } catch (e) {
-      console.error("Error reading habit history from localStorage", e);
-    }
-    return {};
-  });
-
-  const [newHabitName, setNewHabitName] = useState("");
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [hasCelebrated, setHasCelebrated] = useState(false);
-
-  // Focus Timer state
-  const [focusTime, setFocusTime] = useState(25 * 60);
-  const [totalFocusSessionDuration, setTotalFocusSessionDuration] = useState(25 * 60);
+export default function App() {
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [tasks, setTasks] = useState([
+    { id: 1, text: "Define weekly core objectives", completed: true, priority: "high" },
+    { id: 2, text: "Review alignment & focus metrics", completed: false, priority: "medium" },
+    { id: 3, text: "Complete 45-minute deep work block", completed: false, priority: "high" },
+  ]);
+  const [newTask, setNewTask] = useState("");
+  const [taskPriority, setTaskPriority] = useState("medium");
+  
+  // Timer State
+  const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [isFocusMode, setIsFocusMode] = useState(false);
-  const [breaksTaken, setBreaksTaken] = useState(0);
-  const [focusTimeHistory, setFocusTimeHistory] = useState<Record<string, number>>(() => {
-    try {
-      const saved = localStorage.getItem("dc_focus_history");
-      return saved ? JSON.parse(saved) : {};
-    } catch (e) {
-      return {};
-    }
-  });
+  const [timerMode, setTimerMode] = useState("work"); // work, break
 
-  // Editing state
-  const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
-  const [editingText, setEditingText] = useState("");
+  // Chatbot State
+  const [messages, setMessages] = useState([
+    { id: 1, sender: "bot", text: "Hello! I am your Clarity Assistant. Let's optimize your focus today. What's blocking your productivity right now?" }
+  ]);
+  const [chatInput, setChatInput] = useState("");
 
-
-  // Toggle non-negotiable status of a habit
-  const toggleNonNegotiable = (habitId: string) => {
-    setHabits((prev) =>
-      prev.map((h) =>
-        h.id === habitId ? { ...h, isNonNegotiable: !h.isNonNegotiable } : h
-      )
-    );
-  };
-
-  // Google Auth states
-  const [googleUser, setGoogleUser] = useState<User | null>(null);
-  const [localAccessToken, setLocalAccessToken] = useState<string | null>(null);
-  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
-
-  // Scheduling states
-  const [schedulingHabitId, setSchedulingHabitId] = useState<string | null>(null);
-  const [scheduleDate, setScheduleDate] = useState(() => {
-    const d = new Date();
-    return d.toISOString().split("T")[0];
-  });
-  const [scheduleTime, setScheduleTime] = useState("08:00");
-  const [scheduleDuration, setScheduleDuration] = useState("30");
-  const [scheduleStatus, setScheduleStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [scheduleError, setScheduleError] = useState<string | null>(null);
-
-  // Listen to Google Auth state to enable scheduling
+  // Timer Logic
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        setGoogleUser(user);
-        const token = await getAccessToken();
-        if (token) {
-          setLocalAccessToken(token);
-        }
+    let interval: any = null;
+    if (isTimerRunning && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0) {
+      if (timerMode === "work") {
+        alert("Deep work block complete! Take a well-deserved break.");
+        setTimerMode("break");
+        setTimeLeft(5 * 60);
       } else {
-        setGoogleUser(null);
-        setLocalAccessToken(null);
+        alert("Break over! Ready to lock back in?");
+        setTimerMode("work");
+        setTimeLeft(25 * 60);
       }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Helper to obtain current local ISO date string "YYYY-MM-DD"
-  const getLocalDateString = (date: Date = new Date()) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const todayStr = useMemo(() => getLocalDateString(), []);
-
-  // Compute completed counts chronologically for the last 7 days
-  const last7DaysData = useMemo(() => {
-    const data = [];
-    const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = getLocalDateString(d);
-      const dayLabel = daysOfWeek[d.getDay()];
-      const completedCount = completionHistory[dateStr]?.length || 0;
-      data.push({
-        dateStr,
-        dayLabel,
-        completed: completedCount,
-      });
-    }
-    return data;
-  }, [completionHistory]);
-
-  // Generate 7-day completion report and trigger save / visual presentation
-  const handleExportSummary = () => {
-    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    
-    const dayDetails = [];
-    let grandTotalHabits = 0;
-    let grandCompleted = 0;
-
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = getLocalDateString(d);
-      const dayName = daysOfWeek[d.getDay()];
-      const dayLabelMedium = `${monthNames[d.getMonth()]} ${d.getDate()}`;
-
-      const completedIds = completionHistory[dateStr] || [];
-      const completedList = habits.filter((h) => completedIds.includes(h.id));
-      const incompleteList = habits.filter((h) => !completedIds.includes(h.id));
-
-      dayDetails.push({
-        dateStr,
-        dayLabel: dayName,
-        dayLabelMedium,
-        completedCount: completedList.length,
-        totalCount: habits.length,
-        completedHabitNames: completedList.map((h) => h.name),
-        incompleteHabitNames: incompleteList.map((h) => h.name)
-      });
-
-      grandTotalHabits += habits.length;
-      grandCompleted += completedList.length;
-    }
-
-    const firstDate = new Date();
-    firstDate.setDate(firstDate.getDate() - 6);
-    const rangeStr = `${monthNames[firstDate.getMonth()]} ${firstDate.getDate()} - ${monthNames[new Date().getMonth()]} ${new Date().getDate()}`;
-    
-    const timestamp = new Date().toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-
-    const completionRate = grandTotalHabits > 0 ? Math.round((grandCompleted / grandTotalHabits) * 100) : 0;
-
-    const newReport = {
-      id: "report_" + Date.now(),
-      timestamp,
-      dateRange: rangeStr,
-      totalHabitsCount: grandTotalHabits,
-      completedTasksCount: grandCompleted,
-      completionRate,
-      dayDetails
-    };
-
-    // Store report in localStorage to share access with drawer
-    try {
-      const savedReportsStr = localStorage.getItem("dc_habit_reports") || "[]";
-      const savedReports = JSON.parse(savedReportsStr);
-      const updatedReports = [newReport, ...savedReports].slice(0, 5);
-      localStorage.setItem("dc_habit_reports", JSON.stringify(updatedReports));
-    } catch (e) {
-      console.error(e);
-    }
-
-    if (onExportReport) {
-      onExportReport(newReport);
-    }
-  };
-
-  // Sync state changes to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem("dc_wellness_habits", JSON.stringify(habits));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [habits]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("dc_habit_history", JSON.stringify(completionHistory));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [completionHistory]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("dc_focus_history", JSON.stringify(focusTimeHistory));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [focusTimeHistory]);
-
-  // Calming chime sound using Web Audio API on habit completion
-  const playHabitChimeSound = () => {
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const now = ctx.currentTime;
-
-      // Primary gentle chord (E5 -> A5 -> C#6 Major/Sus atmosphere for a crystal-clear, positive vibe)
-      const tones = [
-        { freq: 659.25, delay: 0.0, volume: 0.08, duration: 1.0 },   // E5
-        { freq: 880.00, delay: 0.08, volume: 0.06, duration: 1.2 },  // A5
-        { freq: 1108.73, delay: 0.16, volume: 0.05, duration: 1.4 }  // C#6
-      ];
-
-      tones.forEach(({ freq, delay, volume, duration }) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, now + delay);
-
-        // Gentle envelope configuration
-        gain.gain.setValueAtTime(0, now + delay);
-        gain.gain.linearRampToValueAtTime(volume, now + delay + 0.05); // quick soft attack
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + duration); // smooth decay
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.start(now + delay);
-        osc.stop(now + delay + duration);
-      });
-    } catch (e) {
-      console.warn("AudioContext failing to play habit chime:", e);
-    }
-  };
-
-  // Toggle habit completion for today
-  const handleToggleHabit = (habitId: string) => {
-    // Prevent toggling if actively editing this habit
-    if (editingHabitId === habitId) return;
-
-    let isMarkingComplete = false;
-
-    setCompletionHistory((prev) => {
-      const todayCompletes = prev[todayStr] ? [...prev[todayStr]] : [];
-      let nextCompletes: string[];
-
-      if (todayCompletes.includes(habitId)) {
-        nextCompletes = todayCompletes.filter((id) => id !== habitId);
-      } else {
-        nextCompletes = [...todayCompletes, habitId];
-        isMarkingComplete = true;
-      }
-
-      return {
-        ...prev,
-        [todayStr]: nextCompletes
-      };
-    });
-
-    if (isMarkingComplete) {
-      // Short celebration when checking a habit off!
-      setShowCelebration(true);
-      setTimeout(() => setShowCelebration(false), 2000);
-      playHabitChimeSound();
-    }
-  };
-
-  // Add customized wellness habit
-  const handleAddHabit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = newHabitName.trim();
-    if (!trimmed) return;
-
-    const newHabit: Habit = {
-      id: "custom_" + Date.now(),
-      name: trimmed,
-      isCustom: true
-    };
-
-    setHabits((prev) => [...prev, newHabit]);
-    setNewHabitName("");
-  };
-
-  // Submit new habit to Google Calendar
-  const handleScheduleEvent = async (habitName: string) => {
-    let activeToken = localAccessToken;
-    
-    if (!activeToken) {
-      setIsConnectingGoogle(true);
-      setScheduleStatus("loading");
-      setScheduleError(null);
-      try {
-        const result = await googleSignIn();
-        if (result) {
-          setGoogleUser(result.user);
-          setLocalAccessToken(result.accessToken);
-          activeToken = result.accessToken;
-        } else {
-          throw new Error("Could not log in to Google");
-        }
-      } catch (err: any) {
-        console.error(err);
-        setScheduleStatus("error");
-        setScheduleError("Authorize calendar permissions to schedule events.");
-        setIsConnectingGoogle(false);
-        return;
-      } finally {
-        setIsConnectingGoogle(false);
-      }
-    }
-
-    setScheduleStatus("loading");
-    setScheduleError(null);
-
-    try {
-      // Construct local date time object
-      const startDateTimeStr = `${scheduleDate}T${scheduleTime}:00`;
-      const startDate = new Date(startDateTimeStr);
-      
-      if (isNaN(startDate.getTime())) {
-        throw new Error("Invalid selected date or time format.");
-      }
-
-      const durationMinutes = parseInt(scheduleDuration, 10) || 30;
-      const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
-
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-
-      const response = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${activeToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          summary: `🌿 Wellness Habit: ${habitName}`,
-          description: `Dedicated slot scheduled via DailyClarity Wellness Tracker. Keep up the amazing momentum! 🌱`,
-          start: {
-            dateTime: startDate.toISOString(),
-            timeZone: timeZone
-          },
-          end: {
-            dateTime: endDate.toISOString(),
-            timeZone: timeZone
-          },
-          reminders: {
-            useDefault: true
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Google Calendar API returned error: ${response.status}`);
-      }
-
-      setScheduleStatus("success");
-      setTimeout(() => {
-        setSchedulingHabitId(null);
-        setScheduleStatus("idle");
-      }, 2500);
-
-    } catch (err: any) {
-      console.error(err);
-      setScheduleStatus("error");
-      setScheduleError(err.message || "Failed to schedule calendar event.");
-    }
-  };
-
-  // Start editing a habit
-  const startEditing = (habit: Habit) => {
-    setEditingHabitId(habit.id);
-    setEditingText(habit.name);
-  };
-
-  // Cancel editing
-  const cancelEditing = () => {
-    setEditingHabitId(null);
-    setEditingText("");
-  };
-
-  // Save edited habit text
-  const saveEditedText = (habitId: string) => {
-    const trimmed = editingText.trim();
-    if (!trimmed) return;
-
-    setHabits((prev) =>
-      prev.map((h) => (h.id === habitId ? { ...h, name: trimmed } : h))
-    );
-    setEditingHabitId(null);
-    setEditingText("");
-  };
-
-  // Remove customized habit
-  const handleRemoveHabit = (habitId: string) => {
-    setHabits((prev) => prev.filter((h) => h.id !== habitId));
-    // Clean from today's list if present
-    setCompletionHistory((prev) => {
-      const nextHistory = { ...prev };
-      Object.keys(nextHistory).forEach((dateKey) => {
-        nextHistory[dateKey] = nextHistory[dateKey].filter((id) => id !== habitId);
-      });
-      return nextHistory;
-    });
-    if (editingHabitId === habitId) {
-      setEditingHabitId(null);
-      setEditingText("");
-    }
-  };
-
-  // Calculate day streak for a given habit
-  const getHabitStreak = (habitId: string): number => {
-    let streak = 0;
-    const now = new Date();
-    
-    // Check if yesterday or today were completed
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    const yesStr = getLocalDateString(yesterday);
-    const wasCompletedToday = completionHistory[todayStr]?.includes(habitId);
-    const wasCompletedYesterday = completionHistory[yesStr]?.includes(habitId);
-
-    // If neither yesterday nor today is completed, streak is broken / 0
-    if (!wasCompletedToday && !wasCompletedYesterday) {
-      return 0;
-    }
-
-    // Set starting check point (today if logged, else yesterday)
-    let checkDate = wasCompletedToday ? now : yesterday;
-
-    while (true) {
-      const checkStr = getLocalDateString(checkDate);
-      if (completionHistory[checkStr]?.includes(habitId)) {
-        streak++;
-        // Go 1 day back
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-
-    return streak;
-  };
-
-  const todayCompletedCount = useMemo(() => {
-    const logged = completionHistory[todayStr] || [];
-    return habits.filter((h) => logged.includes(h.id)).length;
-  }, [completionHistory, habits, todayStr]);
-
-  const progressPercentage = useMemo(() => {
-    if (habits.length === 0) return 0;
-    return Math.round((todayCompletedCount / habits.length) * 100);
-  }, [todayCompletedCount, habits]);
-
-  // Trigger confetti when 100% is reached
-  useEffect(() => {
-    if (progressPercentage === 100 && !hasCelebrated) {
-      setShowConfetti(true);
-      setHasCelebrated(true);
-      setTimeout(() => setShowConfetti(false), 3000);
-    } else if (progressPercentage < 100) {
-      setHasCelebrated(false);
-    }
-  }, [progressPercentage, hasCelebrated]);
-
-  // Focus Timer logic
-  useEffect(() => {
-    let timer: any;
-    if (isTimerRunning && focusTime > 0) {
-      timer = setInterval(() => setFocusTime((t) => t - 1), 1000);
-    } else if (focusTime === 0 && isTimerRunning) {
       setIsTimerRunning(false);
-      setIsFocusMode(false);
-      
-      // Auto-complete "Focus Session" habit
-      const focusHabit = habits.find(h => h.name.includes("Focus Session"));
-      if (focusHabit) {
-        handleToggleHabit(focusHabit.id);
-      } else {
-        // Add if not exists
-        const newHabit: Habit = {
-          id: "focus_session",
-          name: "Focus Session 🧠",
-          isCustom: false
-        };
-        setHabits(prev => [...prev, newHabit]);
-        setCompletionHistory(prev => ({
-          ...prev,
-          [todayStr]: [...(prev[todayStr] || []), "focus_session"]
-        }));
-      }
-      setFocusTimeHistory(prev => ({
-        ...prev,
-        [todayStr]: (prev[todayStr] || 0) + totalFocusSessionDuration
-      }));
-      setFocusTime(totalFocusSessionDuration); // Reset
-      setBreaksTaken(0);
     }
-    return () => clearInterval(timer);
-  }, [isTimerRunning, focusTime, totalFocusSessionDuration]);
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timeLeft, timerMode]);
 
-  // Active view switcher state
-  const [activeView, setActiveView] = useState<"daily" | "weekly">("daily");
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
 
-  const weeklyMetrics = useMemo(() => {
-    let totalPossible = 0;
-    let totalCompleted = 0;
-    let highestStreak = 0;
+  // Task Handlers
+  const addTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTask.trim()) return;
+    setTasks([...tasks, { id: Date.now(), text: newTask, completed: false, priority: taskPriority }]);
+    setNewTask("");
+  };
 
-    const last7DaysDates: string[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      last7DaysDates.push(getLocalDateString(d));
-    }
+  const toggleTask = (id: number) => {
+    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+  };
 
-    habits.forEach((habit) => {
-      last7DaysDates.forEach((dateStr) => {
-        totalPossible++;
-        if (completionHistory[dateStr]?.includes(habit.id)) {
-          totalCompleted++;
-        }
-      });
-      const currentStreak = getHabitStreak(habit.id);
-      if (currentStreak > highestStreak) {
-        highestStreak = currentStreak;
+  const deleteTask = (id: number) => {
+    setTasks(tasks.filter(t => t.id !== id));
+  };
+
+  // Chat Handlers
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userMessage = { id: Date.now(), sender: "user", text: chatInput };
+    setMessages(prev => [...prev, userMessage]);
+    setChatInput("");
+
+    // Professional AI simulated response logic
+    setTimeout(() => {
+      let botText = "Let's break that down into small, actionable steps. Try setting a 25-minute single-tasking timer right now to build momentum.";
+      if (chatInput.toLowerCase().includes("tired") || chatInput.toLowerCase().includes("burnout")) {
+        botText = "Burnout reduces clarity significantly. I recommend stopping your current task immediately, drinking some water, and using our 5-minute break mode.";
+      } else if (chatInput.toLowerCase().includes("distracted") || chatInput.toLowerCase().includes("phone")) {
+        botText = "Physical distance is your best defense. Put your phone in another room, close unnecessary tabs, and let's clear one urgent task.";
       }
-    });
-
-    const completionRate = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
-    
-    let totalWeeklyFocusSeconds = 0;
-    last7DaysDates.forEach(dateStr => {
-      totalWeeklyFocusSeconds += (focusTimeHistory[dateStr] || 0);
-    });
-
-    return {
-      completionRate,
-      highestStreak,
-      totalCompleted,
-      totalPossible,
-      last7DaysDates,
-      totalWeeklyFocusSeconds
-    };
-  }, [habits, completionHistory, focusTimeHistory]);
+      setMessages(prev => [...prev, { id: Date.now() + 1, sender: "bot", text: botText }]);
+    }, 8000);
+  };
 
   return (
-    <motion.div
-      id="daily-habit-tracker-container"
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-      className={`w-full max-w-[600px] ${theme.card} rounded-[32px] p-6 md:p-8 flex flex-col gap-6 mt-6 relative overflow-hidden`}
-    >
-      {/* Editorial View Switcher Tabs */}
-      <div id="view-switching-header" className="flex border-b border-neutral-100 dark:border-neutral-800 -mx-6 md:-mx-8 px-6 md:px-8 mt-[-10px] pb-3 shrink-0">
-        <button
-          id="btn-switch-daily"
-          type="button"
-          onClick={() => setActiveView("daily")}
-          className={`text-[10px] font-black uppercase tracking-widest border-b-2 transition-all cursor-pointer mr-6 -mb-3.5 pb-2.5 ${
-            activeView === "daily"
-              ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
-              : "border-transparent text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
-          }`}
-        >
-          📝 Checklist
-        </button>
-        <button
-          id="btn-switch-weekly"
-          type="button"
-          onClick={() => setActiveView("weekly")}
-          className={`text-[10px] font-black uppercase tracking-widest border-b-2 transition-all cursor-pointer -mb-3.5 pb-2.5 ${
-            activeView === "weekly"
-              ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
-              : "border-transparent text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
-          }`}
-        >
-          📈 Weekly Insights
-        </button>
-      </div>
-
-      <AnimatePresence mode="wait">
-        {activeView === "daily" ? (
-          <motion.div
-            key="daily-view"
-            initial={{ opacity: 0, x: -6 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 6 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-col gap-6"
-          >
-            {/* Decorative top header indicator */}
-            <div className="flex items-center justify-between border-b pb-4 border-dashed border-neutral-200 dark:border-neutral-800">
-              <div className="flex flex-col text-left">
-                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${theme.subtleLabel}`}>
-                  Presence Building
-                </span>
-                <h2 className={`text-xl font-extrabold tracking-tight ${theme.title}`}>
-                  Daily Wellness Habits
-                </h2>
-              </div>
-              <div className="flex items-center gap-2">
-                {progressPercentage === 100 && (
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[10px] uppercase font-black px-2.5 py-1 rounded-full flex items-center gap-1.5"
-                  >
-                    <Sparkles size={11} className="animate-pulse" />
-                    <span>Perfect Day</span>
-                  </motion.div>
-                )}
-                <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-full ${theme.badge}`}>
-                  {todayCompletedCount}/{habits.length} Done ({progressPercentage}%)
-                </span>
-              </div>
+    <div className="flex h-screen bg-[#09090b] text-zinc-100 font-sans overflow-hidden">
+      {/* Sidebar Navigation */}
+      <aside className="w-64 bg-[#121214] border-r border-zinc-800 flex flex-col justify-between p-4">
+        <div>
+          <div className="flex items-center gap-3 px-2 py-4 mb-4">
+            <div className="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-600/30">
+              <BrainCircuit size={24} />
             </div>
-
-            {/* Progress Bar indicator */}
-            <div className="w-full bg-neutral-200 dark:bg-neutral-800 h-1.5 rounded-full overflow-hidden mt-[-8px]">
-              <motion.div
-                id="habit-progress-bar-fill"
-                className="bg-emerald-500 h-full rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPercentage}%` }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-              />
+            <div>
+              <h1 className="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">Daily Clarity</h1>
+              <p className="text-xs text-zinc-500 font-medium">V20.26 Stable Build</p>
             </div>
+          </div>
 
-            {/* Weekly Sparkline Completion Trend */}
-            <div className={`p-4 rounded-2xl border ${theme.border} ${isDarkMode ? "bg-[#171C1A]" : "bg-neutral-50/50"} flex flex-col sm:flex-row items-center justify-between gap-4 mt-[-4px]`}>
-              <div className="text-left w-full sm:w-auto flex flex-col justify-between h-full">
-                <div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">7-Day Consistency Trend</div>
-                  <div className={`text-sm font-black ${theme.text} flex items-center gap-1.5 flex-wrap mt-0.5`}>
-                    <span>Weekly Flow</span>
-                    <span className="text-[9px] font-semibold text-emerald-500 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                      {last7DaysData.reduce((sum, item) => sum + item.completed, 0)} checked off
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="w-full sm:w-[180px] h-[45px] relative">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={last7DaysData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
-                    <defs>
-                      <linearGradient id="habitChimeGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <RechartsTooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="text-[10px] bg-neutral-900 dark:bg-neutral-950 text-white p-1.5 rounded-lg border border-neutral-800 shadow-xl font-bold">
-                              <div>{payload[0].payload.dayLabel}: {payload[0].value} done</div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                      cursor={{ stroke: "#10b981", strokeWidth: 1, strokeDasharray: "2 2" }}
-                    />
-                    <XAxis dataKey="dayLabel" hide />
-                    <YAxis hide domain={[0, "auto"]} />
-                    <Area
-                      type="monotone"
-                      dataKey="completed"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#habitChimeGradient)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-                <div className="flex justify-between text-[8px] font-black text-neutral-400 mt-1 px-1">
-                  <span>{last7DaysData[0].dayLabel}</span>
-                  <span>{last7DaysData[3].dayLabel}</span>
-                  <span>{last7DaysData[6].dayLabel} (Today)</span>
-                </div>
-              </div>
+          <nav className="space-y-1">
+            {[
+              { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+              { id: "tasks", label: "Task Alignment", icon: CheckSquare },
+              { id: "timer", label: "Focus Matrix", icon: Clock },
+              { id: "ai", label: "Clarity AI Co-Pilot", icon: BrainCircuit },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    isActive 
+                      ? "bg-zinc-800 text-white shadow-inner" 
+                      : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                  }`}
+                >
+                  <Icon size={18} className={isActive ? "text-indigo-400" : "text-zinc-500"} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="p-3 bg-zinc-900/50 border border-zinc-800 rounded-xl flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white shadow-md shadow-indigo-500/10">
+            HQ
+          </div>
+          <div className="overflow-hidden">
+            <p className="text-xs font-semibold text-zinc-300 truncate">Workspace Active</p>
+            <p className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Production Ready
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content Pane */}
+      <main className="flex-1 bg-[#09090b] flex flex-col overflow-hidden">
+        <header className="h-16 border-b border-zinc-800 bg-[#121214]/50 backdrop-blur-md flex items-center justify-between px-8 z-10">
+          <div className="flex items-center gap-2 text-sm text-zinc-400">
+            <span>Workspace</span>
+            <span className="text-zinc-600">/</span>
+            <span className="text-zinc-200 font-medium capitalize">{activeTab}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-xs text-zinc-500 font-medium">Daily Score</p>
+              <p className="text-sm font-bold text-indigo-400">92 / 100</p>
             </div>
+          </div>
+        </header>
 
-
- 
-            {/* Active Habit Checklist */}
-            <div id="habit-checklist-container" className="flex flex-col gap-2.5 relative">
-              <AnimatePresence>
-                {showConfetti && (
-                  <div className="absolute inset-0 z-50 pointer-events-none overflow-hidden">
-                    {[...Array(20)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="absolute w-2 h-2 rounded-full bg-emerald-500"
-                        initial={{ top: "100%", left: `${i * 5}%`, opacity: 0 }}
-                        animate={{
-                          top: `${Math.random() * 80}%`,
-                          left: `${Math.random() * 100}%`,
-                          opacity: [0, 1, 0],
-                          scale: [0, 1.5, 0],
-                          rotate: Math.random() * 360
-                        }}
-                        transition={{ duration: 2 + Math.random(), delay: Math.random() * 0.5 }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </AnimatePresence>
-              <AnimatePresence initial={false}>
-                {habits.map((habit) => {
-                  const isCompleted = completionHistory[todayStr]?.includes(habit.id);
-                  const streak = getHabitStreak(habit.id);
-                  const isEditing = editingHabitId === habit.id;
-                  const isScheduling = schedulingHabitId === habit.id;
-
+        <div className="flex-1 overflow-y-auto p-8">
+          {activeTab === "dashboard" && (
+            <div className="space-y-6">
+              {/* Stat Metric Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {[
+                  { title: "Deep Work Sessions", value: "4 / 6", desc: "+1.2 hours over daily average", icon: Clock, color: "text-indigo-400" },
+                  { title: "Objective Completion", value: "88%", desc: "11 of 13 trackable tasks closed", icon: CheckSquare, color: "text-emerald-400" },
+                  { title: "Focus Metric Index", value: "84.2", desc: "Optimal psychological flow zone", icon: TrendingUp, color: "text-purple-400" },
+                ].map((stat, i) => {
+                  const Icon = stat.icon;
                   return (
-                    <div key={habit.id} className="flex flex-col gap-1.5 w-full">
-                      <motion.div
-                        id={`habit-card-${habit.id}`}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0, scale: isCompleted ? 1.02 : 1 }}
-                        transition={{ duration: 0.3 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-200 group ${
-                          isEditing
-                            ? "border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500/30"
-                            : isCompleted
-                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-50"
-                            : isDarkMode
-                            ? "bg-[#171C1A] border-[#2D3633] text-[#E8F4F0] hover:border-emerald-500/30"
-                            : "bg-[#F9FBFA] border-[#E0E8E5] text-[#2C2C2C] hover:border-emerald-500/30"
-                        }`}
-                      >
-                  {isEditing ? (
-                    /* Inline edit mode form layout */
-                    <div className="flex items-center gap-2 flex-1 mr-2">
-                      <input
-                        type="text"
-                        className={`flex-1 text-xs px-3 py-1.5 rounded-xl border outline-none font-semibold ${theme.input}`}
-                        value={editingText}
-                        onChange={(e) => setEditingText(e.target.value)}
-                        maxLength={45}
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            saveEditedText(habit.id);
-                          } else if (e.key === "Escape") {
-                            cancelEditing();
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => saveEditedText(habit.id)}
-                        className="p-1 px-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[11px] font-bold cursor-pointer"
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={cancelEditing}
-                        className={`p-1.5 rounded-xl border ${theme.border} text-neutral-400 hover:text-neutral-500 cursor-pointer`}
-                      >
-                        <X size={12} />
-                      </button>
+                    <div key={i} className="bg-[#121214] border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-all duration-200 shadow-sm">
+                      <div className="flex justify-between items-start mb-3">
+                        <span className="text-xs font-semibold text-zinc-400 tracking-wide uppercase">{stat.title}</span>
+                        <Icon size={18} className={stat.color} />
+                      </div>
+                      <p className="text-2xl font-bold tracking-tight text-white mb-1">{stat.value}</p>
+                      <p className="text-xs text-zinc-500 font-medium">{stat.desc}</p>
                     </div>
-                  ) : (
-                    /* Toggle / display view mode */
-                    <button
-                      type="button"
-                      onClick={() => handleToggleHabit(habit.id)}
-                      className="flex items-center gap-3.5 flex-1 text-left cursor-pointer select-none"
-                    >
-                      <div
-                        className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 transition-all ${
-                          isCompleted
-                            ? "bg-emerald-500 border-transparent text-white"
-                            : "border-neutral-300 dark:border-neutral-700"
-                        }`}
-                      >
-                        {isCompleted && <Check size={14} strokeWidth={4} />}
-                      </div>
-                      <span
-                        className={`text-sm font-semibold tracking-tight transition-all flex items-center justify-start gap-1.5 flex-wrap ${
-                          isCompleted ? "opacity-75 line-through decoration-emerald-500/50" : ""
-                        }`}
-                      >
-                        <span>{habit.name}</span>
-                        {habit.isNonNegotiable && (
-                          <span
-                            className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 text-[9px] uppercase font-black px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shrink-0"
-                            title="Non-negotiable daily habit requirement"
-                          >
-                            <Shield size={9} fill="currentColor" strokeWidth={1} />
-                            <span>Must</span>
-                          </span>
-                        )}
-                      </span>
-                    </button>
-                  )}
-
-                  {/* Right actions block: Only shown when not editing */}
-                  {!isEditing && (
-                    <div className="flex items-center gap-1">
-                      {streak > 0 && (
-                        <div
-                          id={`habit-streak-badge-${habit.id}`}
-                          className={`flex items-center gap-1 px-2 py-0.5 mr-1 rounded-full text-[11px] font-extrabold tracking-tight ${
-                            isCompleted
-                              ? "bg-orange-500/20 text-orange-500"
-                              : "bg-orange-500/10 text-orange-500 dark:text-orange-400"
-                          }`}
-                          title={`${streak} day consistent streak!`}
-                        >
-                          <Flame size={12} fill="currentColor" strokeWidth={1} className="animate-pulse" />
-                          <span>{streak}d</span>
-                        </div>
-                      )}
-
-                      {/* Non-negotiable toggle shield */}
-                      <button
-                        type="button"
-                        onClick={() => toggleNonNegotiable(habit.id)}
-                        className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
-                          habit.isNonNegotiable
-                            ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/25"
-                            : "text-neutral-400 hover:text-amber-500 focus:text-amber-500"
-                        }`}
-                        title={
-                          habit.isNonNegotiable
-                            ? "Remove 'Non-Negotiable' reminder focus"
-                            : "Set as 'Non-Negotiable' daily requirement"
-                        }
-                      >
-                        <ShieldAlert size={13} />
-                      </button>
-
-                      {/* Customize / Edit pencil */}
-                      <button
-                        type="button"
-                        onClick={() => startEditing(habit)}
-                        className="p-1.5 rounded-xl text-neutral-400 hover:text-emerald-500 focus:text-emerald-500 transition-colors cursor-pointer"
-                        title="Edit/Customize habit"
-                      >
-                        <Pencil size={13} />
-                      </button>
-
-                      {/* Calendar scheduler button */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (schedulingHabitId === habit.id) {
-                            setSchedulingHabitId(null);
-                          } else {
-                            setSchedulingHabitId(habit.id);
-                            setScheduleStatus("idle");
-                            setScheduleError(null);
-                          }
-                        }}
-                        className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
-                          isScheduling
-                            ? "text-emerald-500 bg-emerald-500/10"
-                            : "text-neutral-400 hover:text-emerald-500 focus:text-emerald-500"
-                        }`}
-                        title="Schedule this habit on Google Calendar"
-                      >
-                        <Calendar size={13} />
-                      </button>
-
-                      {habit.isCustom && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveHabit(habit.id)}
-                          className="p-1.5 rounded-xl text-neutral-400 hover:text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
-                          title="Remove custom habit"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </motion.div>
-
-                {/* Inline Google Calendar scheduling form */}
-                <AnimatePresence>
-                  {isScheduling && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.25 }}
-                      className={`overflow-hidden rounded-2xl border ${theme.border} ${
-                        isDarkMode ? "bg-[#141817]" : "bg-neutral-50/50"
-                      } p-3.5 mt-1 space-y-3.5 text-left`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <GoogleIcon />
-                          <span className="text-xs font-extrabold tracking-tight">Schedule Wellness Event</span>
-                        </div>
-                        {googleUser && (
-                          <span className="text-[10px] text-neutral-400 font-medium">
-                            Linked to {googleUser.email}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {/* Selected Date */}
-                        <div>
-                          <label className={`block text-[9px] font-bold uppercase tracking-wider mb-1 ${theme.subtleLabel}`}>
-                            Date
-                          </label>
-                          <input
-                            type="date"
-                            value={scheduleDate}
-                            onChange={(e) => setScheduleDate(e.target.value)}
-                            className={`w-full text-xs px-2.5 py-1.5 rounded-xl border outline-none ${theme.input}`}
-                          />
-                        </div>
-
-                        {/* Selected Time */}
-                        <div>
-                          <label className={`block text-[9px] font-bold uppercase tracking-wider mb-1 ${theme.subtleLabel}`}>
-                            Time
-                          </label>
-                          <input
-                            type="time"
-                            value={scheduleTime}
-                            onChange={(e) => setScheduleTime(e.target.value)}
-                            className={`w-full text-xs px-2.5 py-1.5 rounded-xl border outline-none ${theme.input}`}
-                          />
-                        </div>
-
-                        {/* Selected Duration */}
-                        <div>
-                          <label className={`block text-[9px] font-bold uppercase tracking-wider mb-1 ${theme.subtleLabel}`}>
-                            Duration
-                          </label>
-                          <select
-                            value={scheduleDuration}
-                            onChange={(e) => setScheduleDuration(e.target.value)}
-                            className={`w-full text-xs px-2.5 py-1.5 rounded-xl border outline-none ${theme.input}`}
-                          >
-                            <option value="15">15 minutes</option>
-                            <option value="30">30 minutes</option>
-                            <option value="45">45 minutes</option>
-                            <option value="60">60 minutes</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {scheduleError && (
-                        <div className="flex items-start gap-1.5 text-[11px] text-red-500 font-semibold bg-red-500/5 p-2 rounded-xl border border-red-500/10">
-                          <AlertCircle size={13} className="shrink-0 mt-0.5" />
-                          <span>{scheduleError}</span>
-                        </div>
-                      )}
-
-                      {scheduleStatus === "success" && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-emerald-500 font-extrabold bg-emerald-500/5 p-2 rounded-xl border border-emerald-500/10">
-                          <CheckCircle2 size={13} className="shrink-0" />
-                          <span>Successfully scheduled in Google Calendar! 📅✈️</span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-end gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setSchedulingHabitId(null)}
-                          className="px-3 py-1.5 text-xs font-bold text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleScheduleEvent(habit.name)}
-                          disabled={scheduleStatus === "loading"}
-                          className="px-3.5 py-1.5 text-xs font-extrabold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                        >
-                          {scheduleStatus === "loading" ? (
-                            <>
-                              <RefreshCw size={12} className="animate-spin" />
-                              <span>{isConnectingGoogle ? "Connecting..." : "Scheduling..."}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Calendar size={12} />
-                              <span>Add to Calendar</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                  );
+                })}
               </div>
-            );
-          })}
-        </AnimatePresence>
-      </div>
 
-      {/* Add Custom Habit Form */}
-      <form onSubmit={handleAddHabit} id="habit-creator-form" className="flex items-center gap-2 pb-1">
-        <input
-          type="text"
-          placeholder="Add custom habit (e.g., Read 10 pages 📚)..."
-          value={newHabitName}
-          onChange={(e) => setNewHabitName(e.target.value)}
-          maxLength={45}
-          className={`flex-1 text-xs px-4 py-3 rounded-2xl border outline-none font-medium transition-all ${theme.input}`}
-        />
-        <button
-          type="submit"
-          disabled={!newHabitName.trim()}
-          className={`px-4 py-3 rounded-2xl font-bold text-xs select-none cursor-pointer transition-all flex items-center justify-center gap-1.5 shrink-0 ${
-            newHabitName.trim()
-              ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm"
-              : "opacity-40 bg-neutral-300 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-600 cursor-not-allowed"
-          }`}
-        >
-          <Plus size={14} strokeWidth={3} />
-          <span>Add</span>
-        </button>
-      </form>
+              {/* Data Visual Analytics Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-[#121214] border border-zinc-800 rounded-xl p-5">
+                  <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
+                    <TrendingUp size={16} className="text-indigo-400" /> Weekly Mental Clarity Index
+                  </h3>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={initialPerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                        <XAxis dataKey="day" stroke="#71717a" fontSize={11} />
+                        <YAxis stroke="#71717a" fontSize={11} domain={[50, 100]} />
+                        <Tooltip contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: "8px", color: "#f4f4f5" }} />
+                        <Line type="monotone" dataKey="clarity" stroke="#4f46e5" strokeWidth={2.5} dot={{ fill: "#4f46e5", r: 4 }} activeDot={{ r: 6 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
 
-            {/* Focus Timer Configuration */}
-            <div className={`p-4 rounded-2xl border ${theme.border} ${isDarkMode ? "bg-[#171C1A]" : "bg-[#F9FBFA]"} flex flex-col gap-3.5 mt-[-4px]`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-xl bg-purple-500/10 text-purple-500 shrink-0">
-                    <Clock size={15} />
+                <div className="bg-[#121214] border border-zinc-800 rounded-xl p-5">
+                  <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
+                    <CheckSquare size={16} className="text-emerald-400" /> Executive Actions Executed
+                  </h3>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={initialPerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                        <XAxis dataKey="day" stroke="#71717a" fontSize={11} />
+                        <YAxis stroke="#71717a" fontSize={11} />
+                        <Tooltip contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: "8px", color: "#f4f4f5" }} />
+                        <Bar dataKey="tasks" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
-                  <div className="text-left">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400 block leading-tight">Focus Timer</span>
-                    <span className={`text-xs font-extrabold ${theme.text}`}>Stay focused / {Math.floor(focusTime / 60)}m</span>
-                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "tasks" && (
+            <div className="max-w-3xl mx-auto space-y-6">
+              <div className="bg-[#121214] border border-zinc-800 rounded-xl p-6">
+                <h2 className="text-lg font-bold text-white mb-2">High-Alignment Task Vector</h2>
+                <p className="text-xs text-zinc-400 mb-5">Map core high-impact tasks to minimize decision fatigue.</p>
+                
+                <form onSubmit={addTask} className="flex gap-3 mb-6">
+                  <input
+                    type="text"
+                    value={newTask}
+                    onChange={(e) => setNewTask(e.target.value)}
+                    placeholder="Formulate highly actionable objective..."
+                    className="flex-1 bg-[#1c1c1f] border border-zinc-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors placeholder-zinc-600"
+                  />
+                  <select
+                    value={taskPriority}
+                    onChange={(e) => setTaskPriority(e.target.value)}
+                    className="bg-[#1c1c1f] border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-zinc-300"
+                  >
+                    <option value="high">High priority</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-4 flex items-center justify-center gap-2 text-sm font-semibold transition-colors shadow-lg shadow-indigo-600/10">
+                    <Plus size={16} /> Track
+                  </button>
+                </form>
+
+                <div className="space-y-2">
+                  {tasks.map((task) => (
+                    <div 
+                      key={task.id} 
+                      className={`flex items-center justify-between p-3 border rounded-lg transition-all duration-200 ${
+                        task.completed 
+                          ? "bg-zinc-900/30 border-zinc-900 text-zinc-500" 
+                          : "bg-[#1c1c1f] border-zinc-800 text-zinc-200 hover:border-zinc-700"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <button onClick={() => toggleTask(task.id)} className="text-zinc-500 hover:text-indigo-400 transition-colors flex-shrink-0">
+                          {task.completed ? <CheckCircle2 size={18} className="text-emerald-500" /> : <Circle size={18} />}
+                        </button>
+                        <span className={`text-sm truncate ${task.completed ? "line-through font-normal" : "font-medium"}`}>{task.text}</span>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                          task.priority === "high" ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" :
+                          task.priority === "medium" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                          "bg-zinc-700/30 text-zinc-400 border border-zinc-700/40"
+                        }`}>
+                          {task.priority}
+                        </span>
+                        <button onClick={() => deleteTask(task.id)} className="text-zinc-600 hover:text-rose-400 transition-colors p-1">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "timer" && (
+            <div className="max-w-md mx-auto text-center space-y-6 py-8">
+              <div className="bg-[#121214] border border-zinc-800 rounded-2xl p-8 shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent"></div>
+                <div className="mb-4">
+                  <span className="text-xs font-bold tracking-widest text-indigo-400 uppercase bg-indigo-500/5 border border-indigo-500/10 px-3 py-1 rounded-full">
+                    {timerMode === "work" ? "Deep Work Engine" : "Strategic Regeneration"}
+                  </span>
                 </div>
                 
-                <button
-                  type="button"
-                  onClick={() => {
-                        setFocusTime(totalFocusSessionDuration);
-                        setIsFocusMode(true)
-                  }}
-                  className="text-[10px] font-black bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-xl transition-all shadow-sm flex items-center gap-1 cursor-pointer shrink-0"
-                >
-                  <Flame size={12} />
-                  <span>Start Focus</span>
-                </button>
-              </div>
-              <div className="flex items-center gap-2 pt-2 border-t border-dashed border-neutral-700 mt-2">
-                <label className="text-[10px] font-bold text-neutral-400">Duration (mins):</label>
-                <input
-                    type="number"
-                    min="1"
-                    max="120"
-                    value={Math.floor(totalFocusSessionDuration / 60)}
-                    onChange={(e) => {
-                        const val = parseInt(e.target.value) || 25;
-                        setTotalFocusSessionDuration(val * 60);
-                        setFocusTime(val * 60);
+                <h2 className="text-7xl font-light font-mono text-white tracking-tight my-6 select-none">{formatTime(timeLeft)}</h2>
+                
+                <div className="flex justify-center gap-3 mb-4">
+                  <button
+                    onClick={() => setIsTimerRunning(!isTimerRunning)}
+                    className={`px-8 py-3 rounded-xl text-sm font-semibold shadow-lg transition-all duration-200 ${
+                      isTimerRunning 
+                        ? "bg-zinc-800 hover:bg-zinc-700 text-white" 
+                        : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20"
+                    }`}
+                  >
+                    {isTimerRunning ? "Pause" : "Initiate Block"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsTimerRunning(false);
+                      setTimeLeft(timerMode === "work" ? 25 * 60 : 5 * 60);
                     }}
-                    className={`text-xs px-2 py-1 w-16 rounded-xl border outline-none ${theme.input}`}
-                />
+                    className="bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 px-5 py-3 rounded-xl text-sm font-medium transition-colors"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <p className="text-xs text-zinc-500 font-medium">Isolate variables. Focus purely on one key action standard.</p>
               </div>
             </div>
+          )}
 
-            {/* Focus Mode Overlay */}
-            {isFocusMode && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="fixed inset-0 z-[60] bg-neutral-950/95 backdrop-blur-xl text-white flex flex-col items-center justify-center p-6 text-center"
-              >
-                <div className="max-w-md w-full flex flex-col items-center gap-6">
-                  <h2 className="text-sm font-black uppercase tracking-widest text-emerald-400">Focus Session Active</h2>
-                  <p className="text-xl font-bold font-sans">Stay focused every day and do whatever things but with full focus.</p>
-                  
-                  <div className="text-7xl font-mono font-medium tracking-tight">
-                    {Math.floor(focusTime / 60)}:{String(focusTime % 60).padStart(2, "0")}
+          {activeTab === "ai" && (
+            <div className="max-w-3xl mx-auto h-[550px] bg-[#121214] border border-zinc-800 rounded-xl flex flex-col overflow-hidden shadow-xl">
+              <div className="p-4 border-b border-zinc-800 bg-[#121214] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-indigo-400">
+                    <Sparkles size={16} />
                   </div>
-                  <div className="flex gap-4 text-xs font-bold text-neutral-400">
-                    <span>Focused: {Math.floor((totalFocusSessionDuration - focusTime) / 60)}m</span>
-                    <span>Remaining: {Math.floor(focusTime / 60)}m</span>
-                  </div>
-
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => { setIsFocusMode(false); setIsTimerRunning(false); }}
-                      className="px-6 py-2.5 rounded-xl bg-neutral-800 text-neutral-300 font-bold hover:bg-neutral-700 transition-colors"
-                    >
-                      Stop
-                    </button>
-                    {/* Focus Mode Overlay - Notifications are explicitly blocked during this session. */}
-                    {!isTimerRunning ? (
-                      <button
-                        onClick={() => setIsTimerRunning(true)}
-                        className="px-8 py-3 rounded-2xl bg-emerald-500 text-white font-extrabold hover:bg-emerald-600 transition-all shadow-lg hover:shadow-emerald-500/20 active:scale-95"
-                      >
-                        {focusTime === totalFocusSessionDuration ? "Start Session" : "Resume Session"}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setIsTimerRunning(false)}
-                        className="px-8 py-3 rounded-2xl bg-amber-500/20 text-amber-300 font-extrabold hover:bg-amber-500/30 transition-all active:scale-95"
-                      >
-                        Pause Focus
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setBreaksTaken(b => Math.min(b + 1, 5))}
-                      disabled={breaksTaken >= 5}
-                      className="px-6 py-2.5 rounded-xl bg-purple-500/20 text-purple-300 font-bold hover:bg-purple-500/30 transition-colors disabled:opacity-50"
-                    >
-                      Break ({breaksTaken}/5)
-                    </button>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Clarity Vector Chat</h3>
+                    <p className="text-[10px] text-zinc-500 font-medium">Cognitive Load Optimization Engine</p>
                   </div>
                 </div>
-
-                  </motion.div>
-              )}
-    </motion.div>
-  ) : (
-    /* Weekly Performance Insights active panel */
-    <motion.div
-      key="weekly-view"
-      initial={{ opacity: 0, x: 6 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -6 }}
-      transition={{ duration: 0.2 }}
-      className="flex flex-col gap-6 md:gap-8 rounded-2xl p-2"
-    >
-      {/* Header section matching premium typography guidelines */}
-      <div id="weekly-insights-header" className="text-left">
-        <span className="block text-[10px] font-black uppercase tracking-[0.25em] text-[#5A6E6A] dark:text-[#A4B8B4]">
-          METRICS & ANALYSIS
-        </span>
-        <h2 className={`text-lg font-extrabold tracking-tight mt-1 ${theme.title}`}>
-          Weekly Performance Insights
-        </h2>
-      </div>
-
-      {/* Core Metrics: Simple text blocks inside a thin-bordered grid structure */}
-      <div id="insights-metrics-grid" className={`grid grid-cols-3 gap-6 py-5 border-t border-b ${theme.border} text-left`}>
-        <div id="metric-completion-rate" className="flex flex-col">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 leading-tight">
-            Completion Rate
-          </span>
-          <span className={`text-2xl font-extrabold tracking-tight mt-1.5 ${theme.text}`}>
-            {weeklyMetrics.completionRate}%
-          </span>
-        </div>
-        
-        <div id="metric-weekly-streak" className="flex flex-col">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 leading-tight">
-            Weekly Streak
-          </span>
-          <span className={`text-2xl font-extrabold tracking-tight mt-1.5 ${theme.text}`}>
-            {weeklyMetrics.highestStreak}d
-          </span>
-        </div>
-
-        <div id="metric-total-checkins" className="flex flex-col">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 leading-tight">
-            Check-ins
-          </span>
-          <strong className={`text-2xl font-extrabold tracking-tight mt-1.5 ${theme.text} font-sans`}>
-            {weeklyMetrics.totalCompleted} <span className="text-xs font-semibold text-neutral-400">/ {weeklyMetrics.totalPossible}</span>
-          </strong>
-        </div>
-      </div>
-
-      {/* Structured progress elements: Elegant thin progress line */}
-      <div id="overall-climb-progress-container" className="space-y-4 text-left">
-        <span className="block text-[10px] font-bold uppercase tracking-widest text-[#5A6E6A] dark:text-[#A4B8B4]">
-          Overall Weekly Progress
-        </span>
-        <div className="w-full bg-neutral-100 dark:bg-neutral-800/80 h-1 rounded-full overflow-hidden">
-          <motion.div 
-            className="bg-[#2D3F3B] dark:bg-[#7FA69E] h-1 rounded-full" 
-            initial={{ width: 0 }}
-            animate={{ width: `${weeklyMetrics.completionRate}%` }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          />
-        </div>
-        <span className="block text-[10px] text-neutral-400 font-mono">
-          Maintaining {weeklyMetrics.completionRate}% of your committed self-alignment goals. Focused for {Math.floor(weeklyMetrics.totalWeeklyFocusSeconds / 60)} minutes this week.
-        </span>
-      </div>
-
-      {/* Sophisticated Data Elements: Monochromatic bar indicators representing Daily Completes over last 7 days */}
-      <div id="monochromatic-bar-tracker-container" className="space-y-4 text-left">
-        <span className="block text-[10px] font-bold uppercase tracking-widest text-[#5A6E6A] dark:text-[#A4B8B4]">
-          Daily Reflection Strength
-        </span>
-        <div className="flex items-end justify-between h-14 pt-2 px-1 gap-2">
-          {last7DaysData.map((day) => {
-            const maxPossible = habits.length;
-            const dayPct = maxPossible > 0 ? (day.completed / maxPossible) * 100 : 0;
-            return (
-              <div key={day.dateStr} className="flex flex-col items-center gap-2.5 flex-1">
-                {/* Monochromatic thin bar slider */}
-                <div className="w-2 bg-neutral-100 dark:bg-neutral-800/80 rounded-t-sm h-10 flex items-end">
-                  <motion.div 
-                    className="w-full bg-[#3A4D49] dark:bg-[#7A9C95] rounded-t-sm"
-                    initial={{ height: 0 }}
-                    animate={{ height: `${dayPct}%` }}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
-                    title={`${day.completed}/${maxPossible} habits completed`}
-                  />
-                </div>
-                <span className="text-[9px] font-mono font-medium text-neutral-400 uppercase tracking-tight">
-                  {day.dayLabel}
-                </span>
+                <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Online</span>
               </div>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* Performance Table: clean, distraction-free habit checklist analysis */}
-      <div id="habit-performance-table-container" className="space-y-4 pt-4 text-left">
-        <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800/60 pb-2.5">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#5A6E6A] dark:text-[#A4B8B4]">
-            Habit Consistency Breakdown
-          </span>
-          <span className="text-[9px] font-mono text-neutral-400">Past 7 Days Status</span>
-        </div>
-        
-        <div className="divide-y divide-neutral-100 dark:divide-neutral-800/40">
-          {habits.map((habit) => {
-            let checkedDaysCount = 0;
-            const completionsArray = weeklyMetrics.last7DaysDates.map((dateStr) => {
-              const checked = completionHistory[dateStr]?.includes(habit.id);
-              if (checked) checkedDaysCount++;
-              return checked;
-            });
-            const completionPct = Math.round((checkedDaysCount / 7) * 100);
-            const streak = getHabitStreak(habit.id);
-
-            return (
-              <div key={habit.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <span className="text-xs font-extrabold text-neutral-800 dark:text-neutral-200 block">
-                    {habit.name}
-                  </span>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-[10px] font-mono text-neutral-400 font-medium">
-                      {checkedDaysCount}/7 days ({completionPct}%)
-                    </span>
-                    {streak > 0 && (
-                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 font-black">
-                        🔥 {streak}d Streak
-                      </span>
-                    )}
-                    {habit.isNonNegotiable && (
-                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 dark:bg-red-500/15 dark:text-red-400 font-black">
-                        🛡️ Must
-                      </span>
-                    )}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#09090b]/40">
+                {messages.map((m) => (
+                  <div key={m.id} className={`flex gap-3 max-w-[85%] ${m.sender === "user" ? "ml-auto flex-row-reverse" : ""}`}>
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center border flex-shrink-0 ${
+                      m.sender === "user" ? "bg-zinc-800 border-zinc-700 text-zinc-200" : "bg-indigo-600/10 border-indigo-600/20 text-indigo-400"
+                    }`}>
+                      {m.sender === "user" ? <User size={14} /> : <Bot size={14} />}
+                    </div>
+                    <div className={`p-3 rounded-xl text-sm leading-relaxed ${
+                      m.sender === "user" ? "bg-indigo-600 text-white font-medium shadow-md shadow-indigo-600/10" : "bg-[#1c1c1f] border border-zinc-800 text-zinc-300"
+                    }`}>
+                      {m.text}
+                    </div>
                   </div>
-                </div>
-
-                {/* Day Bubbles representing latest week status in monochromatic styling */}
-                <div className="flex items-center gap-1 shrink-0">
-                  {completionsArray.map((isChecked, dIdx) => {
-                    const dateString = weeklyMetrics.last7DaysDates[dIdx];
-                    const dateObj = new Date(dateString + "T00:00:00");
-                    const dayChar = ["S", "M", "T", "W", "T", "F", "S"][dateObj.getDay()];
-
-                    return (
-                      <div
-                        key={dIdx}
-                        className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-mono font-black border transition-all ${
-                          isChecked
-                            ? "bg-[#2D3F3B] border-transparent text-white dark:bg-[#7FA69E] dark:text-[#111615]"
-                            : "bg-transparent border-neutral-200 dark:border-neutral-800 text-neutral-400"
-                        }`}
-                        title={`${dateString}: ${isChecked ? "Completed" : "Incomplete"}`}
-                      >
-                        {dayChar}
-                      </div>
-                    );
-                  })}
-                </div>
+                ))}
               </div>
-            );
-          })}
-        </div>
-      </div>
-    </motion.div>
-  )}
-</AnimatePresence>
 
-      {/* Instant celebration micro feedback */}
-      <AnimatePresence>
-        {showCelebration && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            className="absolute bottom-2.5 left-4 right-4 p-2.5 bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20"
-          >
-            <CheckCircle2 size={13} strokeWidth={3} />
-            <span>Consistency builds clarity. Beautifully done! 🌿</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+              <form onSubmit={handleSendMessage} className="p-4 border-t border-zinc-800 bg-[#121214] flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Ask how to reduce clutter or optimize execution strategies..."
+                  className="flex-1 bg-[#1c1c1f] border border-zinc-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors placeholder-zinc-600"
+                />
+                <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-4 flex items-center justify-center transition-colors shadow-lg shadow-indigo-600/10">
+                  <Send size={15} />
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
   );
 }
-
-const GoogleIcon = () => (
-  <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-3.5 h-3.5">
-    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-  </svg>
-);
