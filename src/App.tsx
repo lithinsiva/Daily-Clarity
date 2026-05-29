@@ -2,8 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Check, Plus, Trash2, Flame, Sparkles, CheckCircle2, ChevronRight, Pencil, X, Calendar, Clock, AlertCircle, RefreshCw, Shield, ShieldAlert, Bell, BellRing } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
-import { auth, googleSignIn, getAccessToken } from "../lib/firebaseAuth";
-import { User } from "firebase/auth";
+
 
 interface Habit {
   id: string;
@@ -27,7 +26,7 @@ interface DailyHabitTrackerProps {
     subtleLabel: string;
     affiliateLink: string;
   };
-  onExportReport?: (reportPayload: any) => void;
+
 }
 
 const DEFAULT_HABITS: Habit[] = [
