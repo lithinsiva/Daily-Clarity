@@ -1,247 +1,285 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-interface Habit {
+interface Task {
   id: number;
   text: string;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
   completed: boolean;
 }
 
+interface Message {
+  id: number;
+  sender: 'ai' | 'user';
+  text: string;
+}
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'checklist' | 'insights'>('checklist');
-  const [thought, setThought] = useState('');
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Your exact core habits from your original design
-  const [habits, setHabits] = useState<Habit[]>([
-    { id: 1, text: 'Drink sufficient water', completed: false },
-    { id: 2, text: 'Move body & stretch', completed: false },
-    { id: 3, text: 'Mindful breathing (3m)', completed: false },
-    { id: 4, text: 'Digital sunset (screens off)', completed: false },
+  // --- Tasks State ---
+  const [tasks, setTasks] = useState<Task[]>([
+    { id: 1, text: 'Define weekly core objectives', priority: 'HIGH', completed: true },
+    { id: 2, text: 'Review alignment & focus metrics', priority: 'MEDIUM', completed: false },
+    { id: 3, text: 'Complete 45-minute deep work block', priority: 'HIGH', completed: false },
   ]);
-  const [newHabit, setNewHabit] = useState('');
+  const [newTaskText, setNewTaskText] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState<'HIGH' | 'MEDIUM' | 'LOW'>('MEDIUM');
 
-  const handleToggleHabit = (id: number) => {
-    setHabits(habits.map(h => h.id === id ? { ...h, completed: !h.completed } : h));
+  // --- Timer State ---
+  const [timeLeft, setTimeLeft] = useState(1500); // 25:00
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+  // --- Chat State ---
+  const [messages, setMessages] = useState<Message[]>([
+    { id: 1, sender: 'ai', text: "Hello! I am your Clarity Assistant. Let's optimize your focus today. What's blocking your productivity right now?" }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+
+  // --- Timer Logic ---
+  useEffect(() => {
+    let interval: any = null;
+    if (isTimerRunning && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0) {
+      setIsTimerRunning(false);
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timeLeft]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleAddHabit = (e: React.FormEvent) => {
+  // --- Task Actions ---
+  const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newHabit.trim()) return;
-    setHabits([...habits, { id: Date.now(), text: newHabit.trim(), completed: false }]);
-    setNewHabit('');
+    if (!newTaskText.trim()) return;
+    setTasks([...tasks, {
+      id: Date.now(),
+      text: newTaskText.trim(),
+      priority: newTaskPriority,
+      completed: false
+    }]);
+    setNewTaskText('');
   };
 
-  // 🔥 The Real "Get Clarity" AI Processing Logic
-  const handleGetClarity = () => {
-    if (!thought.trim()) return;
-    setIsLoading(true);
-    setAiResponse(null);
+  const toggleTask = (id: number) => {
+    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+  };
 
-    // This simulates the exact prompt processing from Google AI Studio in real-time
+  const deleteTask = (id: number) => {
+    setTasks(tasks.filter(t => t.id !== id));
+  };
+
+  // --- Chat Actions ---
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    
+    const userMsg: Message = { id: Date.now(), sender: 'user', text: chatInput.trim() };
+    setMessages(prev => [...prev, userMsg]);
+    const currentInput = chatInput.toLowerCase();
+    setChatInput('');
+
     setTimeout(() => {
-      const lowerThought = thought.toLowerCase();
-      let analysis = "";
-
-      if (lowerThought.includes('work') || lowerThought.includes('job') || lowerThought.includes('task') || lowerThought.includes('study')) {
-        analysis = "🎯 CLARITY METRIC DETECTED: Your executive focus is fractured by operational noise. Action plan: Isolate your top single high-impact target right now. Turn off all secondary notifications and execute a clean 25-minute block. Let go of the rest until tomorrow.";
-      } else if (lowerThought.includes('stress') || lowerThought.includes('worry') || lowerThought.includes('anxious') || lowerThought.includes('feel')) {
-        analysis = "🌿 CLARITY METRIC DETECTED: Emotional or mental overload detected. Your mind is trying to solve things all at once. Action plan: Take 3 slow, deep belly breaths right now. Write down what you can control on a physical piece of paper, and consciously park what you cannot control.";
-      } else {
-        analysis = "✨ CLARITY METRIC DETECTED: Mental static cleared. We have mapped your thoughts out of your working memory. Action plan: Protect your energy baseline. Choose one simple administrative task from your list below, cross it out completely, and celebrate the clean momentum.";
+      let aiText = "I've analyzed that benchmark. Let's isolate that variable and structure a clean 25-minute focus block to cross it off.";
+      if (currentInput.includes('stress') || currentInput.includes('tired') || currentInput.includes('stuck')) {
+        aiText = "Mental fatigue detected. I recommend pausing active tasks, completing a 3-minute mindful breathing exercise, and setting one tiny micro-goal.";
       }
-
-      setAiResponse(analysis);
-      setIsLoading(false);
-    }, 1000);
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        sender: 'ai',
+        text: aiText
+      }]);
+    }, 700);
   };
-
-  const completedCount = habits.filter(h => h.completed).length;
-  const completionRate = habits.length > 0 ? Math.round((completedCount / habits.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[#12141c] text-slate-100 font-sans flex flex-col items-center py-12 px-4 selection:bg-orange-500/30">
+    <div className="min-h-screen bg-[#0b0c10] text-slate-200 font-sans flex flex-col p-6 lg:p-8 space-y-6">
       
-      {/* Main Single Card Container - Matches Google AI Studio Layout */}
-      <div className="w-full max-w-2xl bg-[#1a1d29] rounded-2xl border border-slate-800 shadow-2xl p-6 md:p-8 space-y-8">
+      {/* Top Global Header Bar */}
+      <header className="flex justify-between items-center bg-[#111217] border border-slate-800 rounded-2xl px-6 py-4 shadow-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center font-black text-white text-base shadow-lg shadow-indigo-600/20">
+            ⚡
+          </div>
+          <div>
+            <h1 className="font-bold text-white text-base tracking-tight">Daily Clarity Workspace</h1>
+            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Production Dashboard</p>
+          </div>
+        </div>
+        <div className="text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-3 py-1.5 rounded-xl font-mono">
+          System Score: 92 / 100
+        </div>
+      </header>
+
+      {/* Grid Layout Container */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start flex-1 w-full max-w-7xl mx-auto">
         
-        {/* Header Section */}
-        <div className="text-center space-y-2 relative border-b border-slate-800 pb-6">
-          <div className="absolute top-0 right-0 bg-amber-500/10 text-amber-500 font-medium text-xs px-2.5 py-1 rounded-full border border-amber-500/20">
-            🔥 1 Day
-          </div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-white">
-            DailyClarity
-          </h1>
-          <p className="text-xs tracking-widest text-slate-400 uppercase font-semibold/80">
-            Turn Mental Chaos Into Focused Calm
-          </p>
-        </div>
-
-        {/* Brain Dump Input Section */}
-        <div className="bg-[#222636] rounded-xl p-5 border border-slate-700/50 space-y-4">
-          <label className="block text-sm font-medium text-slate-300">
-            What's on your mind? Tasks, worries, random thoughts — just dump it all here...
-          </label>
-          <div className="relative">
-            <textarea
-              value={thought}
-              onChange={(e) => setThought(e.target.value)}
-              maxLength={500}
-              rows={4}
-              className="w-full bg-[#161924] border border-slate-700 rounded-lg p-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 resize-none transition-all text-sm"
-              placeholder="Start typing your thoughts away..."
-            />
-            <div className="absolute bottom-3 right-3 text-xs text-slate-500 font-mono">
-              {thought.length}/500
-            </div>
-          </div>
-          <div className="flex justify-between items-center">
-            <button
-              onClick={() => { setThought(''); setAiResponse(null); }}
-              className="text-xs text-slate-500 hover:text-slate-300 transition-colors font-medium"
-            >
-              Clear Input
-            </button>
-            <button 
-              onClick={handleGetClarity}
-              disabled={isLoading || !thought.trim()}
-              className="px-6 py-2.5 bg-slate-100 hover:bg-white disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-bold rounded-xl shadow-lg shadow-black/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-sm"
-            >
-              {isLoading ? '🤖 Processing...' : '✨ Get Clarity'}
-            </button>
-          </div>
-        </div>
-
-        {/* Real-time AI Output Panel */}
-        {isLoading && (
-          <div className="bg-indigo-950/20 border border-dashed border-indigo-500/30 rounded-xl p-4 text-center text-sm text-indigo-400 animate-pulse">
-            🤖 Analyzing thought strings...
-          </div>
-        )}
-        
-        {aiResponse && (
-          <div className="bg-indigo-950/40 border border-indigo-500/40 text-indigo-200 rounded-xl p-5 text-sm leading-relaxed shadow-lg border-l-4 border-l-indigo-500">
-            {aiResponse}
-          </div>
-        )}
-
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-800 gap-6 text-sm font-medium">
-          <button
-            onClick={() => setActiveTab('checklist')}
-            className={`pb-3 border-b-2 transition-all ${
-              activeTab === 'checklist' ? 'border-orange-500 text-orange-500 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            📋 CHECKLIST
-          </button>
-          <button
-            onClick={() => setActiveTab('insights')}
-            className={`pb-3 border-b-2 transition-all ${
-              activeTab === 'insights' ? 'border-orange-500 text-orange-500 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            📊 WEEKLY INSIGHTS
-          </button>
-        </div>
-
-        {/* Tab Contents */}
-        {activeTab === 'checklist' ? (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xs font-bold tracking-wider text-slate-400 uppercase">Presence Building</h2>
-              <h3 className="text-xl font-bold text-white mt-1">Daily Wellness Habits</h3>
-              <div className="text-xs mt-1 font-medium bg-emerald-500/10 text-emerald-400 w-fit px-2 py-0.5 rounded border border-emerald-500/20">
-                {completedCount}/{habits.length} Done ({completionRate}%)
+        {/* LEFT COLUMN: Controls & Performance (Takes 7/12 spaces) */}
+        <div className="lg:col-span-7 space-y-6 w-full">
+          
+          {/* Top Half Controls: Timer & Alignment Side-by-Side */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Focus Timer Block */}
+            <div className="bg-[#111217] border border-slate-800 rounded-2xl p-6 text-center space-y-5 shadow-xl flex flex-col justify-center min-h-[260px]">
+              <div className="text-[10px] font-bold text-indigo-400 tracking-widest uppercase bg-indigo-500/5 w-fit mx-auto px-3 py-1 rounded-full border border-indigo-500/10">
+                Deep Work Engine
+              </div>
+              <div className="text-5xl font-black text-white font-mono tracking-tight py-2">
+                {formatTime(timeLeft)}
+              </div>
+              <div className="flex justify-center gap-2.5">
+                <button
+                  onClick={() => setIsTimerRunning(!isTimerRunning)}
+                  className={`px-5 py-2 rounded-xl font-bold text-xs tracking-wider uppercase transition-all shadow-md ${
+                    isTimerRunning ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  }`}
+                >
+                  {isTimerRunning ? 'Pause' : 'Start'}
+                </button>
+                <button
+                  onClick={() => { setIsTimerRunning(false); setTimeLeft(1500); }}
+                  className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  Reset
+                </button>
               </div>
             </div>
 
-            <div className="space-y-2.5">
-              {habits.map((habit) => (
-                <div
-                  key={habit.id}
-                  onClick={() => handleToggleHabit(habit.id)}
-                  className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                    habit.completed
-                      ? 'bg-emerald-500/5 border-emerald-500/30 text-slate-400 line-through'
-                      : 'bg-[#1e2231] border-slate-800 text-slate-200 hover:border-slate-700 hover:bg-[#23283a]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-                      habit.completed ? 'bg-emerald-500 border-emerald-500 text-slate-950' : 'border-slate-600 bg-transparent'
+            {/* Task Quick-Add Entry */}
+            <div className="bg-[#111217] border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl min-h-[260px] flex flex-col justify-between">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Queue Objective</h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">Vector tasks directly into tracking vectors.</p>
+              </div>
+              <form onSubmit={handleAddTask} className="space-y-3">
+                <input
+                  type="text"
+                  value={newTaskText}
+                  onChange={(e) => setNewTaskText(e.target.value)}
+                  placeholder="Formulate highly actionable step..."
+                  className="w-full bg-[#0b0c10] border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-slate-700 transition-colors"
+                />
+                <div className="flex gap-2">
+                  <select
+                    value={newTaskPriority}
+                    onChange={(e) => setNewTaskPriority(e.target.value as any)}
+                    className="flex-1 bg-[#0b0c10] border border-slate-800 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-300 focus:outline-none"
+                  >
+                    <option value="HIGH">HIGH Priority</option>
+                    <option value="MEDIUM">MEDIUM Priority</option>
+                    <option value="LOW">LOW Priority</option>
+                  </select>
+                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 rounded-xl transition-all">
+                    + Push
+                  </button>
+                </div>
+              </form>
+            </div>
+
+          </div>
+
+          {/* Alignment Tasks Matrix List */}
+          <div className="bg-[#111217] border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">High-Alignment Task Vector</h3>
+            <div className="space-y-2 max-h-[190px] overflow-y-auto pr-1">
+              {tasks.map((task) => (
+                <div key={task.id} className="flex items-center justify-between p-3.5 bg-[#0b0c10] border border-slate-800/60 rounded-xl hover:border-slate-700 transition-all">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={task.completed}
+                      onChange={() => toggleTask(task.id)}
+                      className="w-4 h-4 rounded border-slate-700 text-indigo-600 focus:ring-0 focus:ring-offset-0 bg-transparent cursor-pointer"
+                    />
+                    <span className={`font-medium text-xs ${task.completed ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+                      {task.text}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded tracking-wider ${
+                      task.priority === 'HIGH' ? 'bg-rose-500/10 text-rose-400' : task.priority === 'MEDIUM' ? 'bg-amber-500/10 text-amber-400' : 'bg-slate-500/10 text-slate-400'
                     }`}>
-                      {habit.completed && (
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm font-medium">{habit.text}</span>
+                      {task.priority}
+                    </span>
+                    <button onClick={() => deleteTask(task.id)} className="text-slate-600 hover:text-rose-400 text-xs transition-colors">
+                      🗑️
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
 
-            <form onSubmit={handleAddHabit} className="flex gap-2">
+          {/* Weekly Performance Performance Graph Simulation */}
+          <div className="bg-[#111217] border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Weekly Mental Clarity Metrics</div>
+            <div className="h-28 flex items-end gap-2 pt-4 border-b border-l border-slate-800 px-2 relative">
+              <div className="w-full bg-indigo-500/20 h-[65%] rounded-t-md transition-all relative group" />
+              <div className="w-full bg-indigo-500/20 h-[70%] rounded-t-md transition-all relative group" />
+              <div className="w-full bg-indigo-500/40 h-[82%] rounded-t-md transition-all relative group" />
+              <div className="w-full bg-indigo-500/20 h-[75%] rounded-t-md transition-all relative group" />
+              <div className="w-full bg-indigo-500/30 h-[88%] rounded-t-md transition-all relative group" />
+              <div className="w-full bg-indigo-600 h-[95%] rounded-t-md relative group" />
+            </div>
+            <div className="flex justify-between text-[10px] font-semibold text-slate-500 uppercase px-2 font-mono">
+              <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+          </div>
+
+        </div>
+
+        {/* RIGHT COLUMN: Clarity AI Co-Pilot Chat Frame (Takes 5/12 spaces) */}
+        <div className="lg:col-span-5 w-full h-full min-h-[500px] lg:min-h-[715px] flex">
+          <div className="bg-[#111217] border border-slate-800 rounded-2xl flex flex-col justify-between overflow-hidden shadow-xl w-full">
+            
+            {/* Box Header */}
+            <div className="bg-[#0b0c10]/40 px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <div className="font-bold text-white text-sm">Clarity Vector Chat</div>
+                <div className="text-[10px] text-slate-500 font-medium mt-0.5">Cognitive Load Optimization Engine</div>
+              </div>
+              <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 uppercase font-mono">
+                Active
+              </span>
+            </div>
+
+            {/* Chat Conversation Logs */}
+            <div className="flex-1 p-5 overflow-y-auto space-y-4 flex flex-col max-h-[350px] lg:max-h-[540px]">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed ${
+                    msg.sender === 'ai'
+                      ? 'bg-[#0b0c10] border border-slate-800 text-slate-300 rounded-tl-none self-start'
+                      : 'bg-indigo-600 text-white rounded-tr-none self-end shadow-md shadow-indigo-600/5'
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              ))}
+            </div>
+
+            {/* Input Form Box */}
+            <form onSubmit={handleSendMessage} className="p-4 bg-[#0b0c10]/40 border-t border-slate-800 flex gap-2">
               <input
                 type="text"
-                value={newHabit}
-                onChange={(e) => setNewHabit(e.target.value)}
-                placeholder="Add custom habit (e.g., Read 10 pages) 📝..."
-                className="flex-1 bg-[#161924] border border-slate-700/70 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Ask how to reduce cognitive clutter..."
+                className="flex-1 bg-[#0b0c10] border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-slate-700 transition-colors"
               />
-              <button
-                type="submit"
-                className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-sm px-4 rounded-xl transition-all"
-              >
-                + Add
+              <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 rounded-xl flex items-center justify-center font-bold text-xs transition-all">
+                Send
               </button>
             </form>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xs font-bold tracking-wider text-slate-400 uppercase">Metrics & Analysis</h2>
-              <h3 className="text-xl font-bold text-white mt-1">Weekly Performance Insights</h3>
-            </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-[#1e2231] border border-slate-800 rounded-xl p-4 text-center">
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Completion Rate</div>
-                <div className="text-2xl font-black text-white mt-1 font-mono">{completionRate}%</div>
-              </div>
-              <div className="bg-[#1e2231] border border-slate-800 rounded-xl p-4 text-center">
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Weekly Streak</div>
-                <div className="text-2xl font-black text-white mt-1 font-mono">0d</div>
-              </div>
-              <div className="bg-[#1e2231] border border-slate-800 rounded-xl p-4 text-center">
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Check-ins</div>
-                <div className="text-2xl font-black text-white mt-1 font-mono">{completedCount}/28</div>
-              </div>
-            </div>
-
-            <div className="bg-[#1e2231] border border-slate-800 rounded-xl p-5 space-y-4">
-              <h4 className="text-xs font-bold tracking-wider text-slate-400 uppercase">Habit Consistency Breakdown</h4>
-              <div className="space-y-3">
-                {habits.map(habit => (
-                  <div key={habit.id} className="space-y-1">
-                    <div className="flex justify-between text-xs font-medium">
-                      <span className="text-slate-300">{habit.text}</span>
-                      <span className="text-slate-400 font-mono">{habit.completed ? '1/7 days (14%)' : '0/7 days (0%)'}</span>
-                    </div>
-                    <div className="w-full bg-[#161924] h-2 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-500 ${habit.completed ? 'bg-emerald-500 w-[14%]' : 'bg-slate-700 w-0'}`}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
-        )}
+        </div>
 
       </div>
     </div>
