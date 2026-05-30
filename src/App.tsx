@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Sparkles, RefreshCw, AlertCircle, Share2, Check, ExternalLink, Sun, Moon, Mic, MicOff } from "lucide-react";
 
 interface Habit {
   id: number;
@@ -12,6 +13,7 @@ export default function App() {
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'checklist' | 'insights'>('checklist');
+  const [isListening, setIsListening] = useState(false);
 
   // Focus Timer Module States (25 mins)
   const [timeLeft, setTimeLeft] = useState(1500);
@@ -133,10 +135,13 @@ export default function App() {
           
           <div className="flex justify-between items-center pt-2 border-t border-slate-800/60 text-[11px] font-bold text-slate-500 font-mono">
             <button
-              onClick={() => { setThought(''); setAiResponse(null); }}
-              className="hover:text-slate-300 transition-colors"
+              onClick={() => setIsListening(!isListening)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
+                isListening ? 'bg-red-500/20 text-red-400' : 'bg-slate-800/40 text-slate-400 hover:bg-slate-800'
+              }`}
             >
-              Clear Input
+              {isListening ? <MicOff size={12} /> : <Mic size={12} />}
+              Speak Thoughts
             </button>
             <span>{thought.length}/500</span>
           </div>
