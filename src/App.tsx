@@ -231,6 +231,7 @@ export default function App() {
                   placeholder="Add custom habit..."
                   className="flex-1 bg-[#1b1d24] border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-slate-700 font-medium"
                 />
+                <input type="submit" style={{display: 'none'}} />
                 <button
                   type="submit"
                   className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs px-4 rounded-xl transition-all"
