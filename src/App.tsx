@@ -1,403 +1,206 @@
-import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
-import { 
-  LayoutDashboard, 
-  CheckSquare, 
-  Clock, 
-  BrainCircuit, 
-  TrendingUp, 
-  Plus, 
-  Trash2, 
-  CheckCircle2, 
-  Circle,
-  AlertCircle,
-  Sparkles,
-  Send,
-  User,
-  Bot
-} from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import React, { useState } from 'react';
 
-// Mock Data for Analytics
-const initialPerformanceData = [
-  { day: "Mon", clarity: 65, tasks: 4 },
-  { day: "Tue", clarity: 70, tasks: 5 },
-  { day: "Wed", clarity: 80, tasks: 7 },
-  { day: "Thu", clarity: 75, tasks: 6 },
-  { day: "Fri", clarity: 85, tasks: 8 },
-  { day: "Sat", clarity: 90, tasks: 9 },
-  { day: "Sun", clarity: 95, tasks: 7 },
-];
+interface Habit {
+  id: number;
+  text: string;
+  completed: boolean;
+}
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [tasks, setTasks] = useState([
-    { id: 1, text: "Define weekly core objectives", completed: true, priority: "high" },
-    { id: 2, text: "Review alignment & focus metrics", completed: false, priority: "medium" },
-    { id: 3, text: "Complete 45-minute deep work block", completed: false, priority: "high" },
+  const [activeTab, setActiveTab] = useState<'checklist' | 'insights'>('checklist');
+  const [thought, setThought] = useState('');
+  const [habits, setHabits] = useState<Habit[]>([
+    { id: 1, text: 'Drink sufficient water', completed: false },
+    { id: 2, text: 'Move body & stretch', completed: false },
+    { id: 3, text: 'Mindful breathing (3m)', completed: false },
+    { id: 4, text: 'Digital sunset (screens off)', completed: false },
   ]);
-  const [newTask, setNewTask] = useState("");
-  const [taskPriority, setTaskPriority] = useState("medium");
-  
-  // Timer State
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [timerMode, setTimerMode] = useState("work"); // work, break
+  const [newHabit, setNewHabit] = useState('');
 
-  // Chatbot State
-  const [messages, setMessages] = useState([
-    { id: 1, sender: "bot", text: "Hello! I am your Clarity Assistant. Let's optimize your focus today. What's blocking your productivity right now?" }
-  ]);
-  const [chatInput, setChatInput] = useState("");
-
-  // Timer Logic
-  useEffect(() => {
-    let interval: any = null;
-    if (isTimerRunning && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0) {
-      if (timerMode === "work") {
-        alert("Deep work block complete! Take a well-deserved break.");
-        setTimerMode("break");
-        setTimeLeft(5 * 60);
-      } else {
-        alert("Break over! Ready to lock back in?");
-        setTimerMode("work");
-        setTimeLeft(25 * 60);
-      }
-      setIsTimerRunning(false);
-    }
-    return () => clearInterval(interval);
-  }, [isTimerRunning, timeLeft, timerMode]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  const handleToggleHabit = (id: number) => {
+    setHabits(habits.map(h => h.id === id ? { ...h, completed: !h.completed } : h));
   };
 
-  // Task Handlers
-  const addTask = (e: React.FormEvent) => {
+  const handleAddHabit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTask.trim()) return;
-    setTasks([...tasks, { id: Date.now(), text: newTask, completed: false, priority: taskPriority }]);
-    setNewTask("");
+    if (!newHabit.trim()) return;
+    setHabits([...habits, { id: Date.now(), text: newHabit.trim(), completed: false }]);
+    setNewHabit('');
   };
 
-  const toggleTask = (id: number) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
-  };
-
-  const deleteTask = (id: number) => {
-    setTasks(tasks.filter(t => t.id !== id));
-  };
-
-  // Chat Handlers
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-
-    const userMessage = { id: Date.now(), sender: "user", text: chatInput };
-    setMessages(prev => [...prev, userMessage]);
-    setChatInput("");
-
-    // Professional AI simulated response logic
-    setTimeout(() => {
-      let botText = "Let's break that down into small, actionable steps. Try setting a 25-minute single-tasking timer right now to build momentum.";
-      if (chatInput.toLowerCase().includes("tired") || chatInput.toLowerCase().includes("burnout")) {
-        botText = "Burnout reduces clarity significantly. I recommend stopping your current task immediately, drinking some water, and using our 5-minute break mode.";
-      } else if (chatInput.toLowerCase().includes("distracted") || chatInput.toLowerCase().includes("phone")) {
-        botText = "Physical distance is your best defense. Put your phone in another room, close unnecessary tabs, and let's clear one urgent task.";
-      }
-      setMessages(prev => [...prev, { id: Date.now() + 1, sender: "bot", text: botText }]);
-    }, 8000);
-  };
+  const completedCount = habits.filter(h => h.completed).length;
+  const completionRate = habits.length > 0 ? Math.round((completedCount / habits.length) * 100) : 0;
 
   return (
-    <div className="flex h-screen bg-[#09090b] text-zinc-100 font-sans overflow-hidden">
-      {/* Sidebar Navigation */}
-      <aside className="w-64 bg-[#121214] border-r border-zinc-800 flex flex-col justify-between p-4">
-        <div>
-          <div className="flex items-center gap-3 px-2 py-4 mb-4">
-            <div className="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-600/30">
-              <BrainCircuit size={24} />
-            </div>
-            <div>
-              <h1 className="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">Daily Clarity</h1>
-              <p className="text-xs text-zinc-500 font-medium">V20.26 Stable Build</p>
+    <div className="min-h-screen bg-[#12141c] text-slate-100 font-sans flex flex-col items-center py-12 px-4 selection:bg-orange-500/30">
+      
+      {/* Main Container */}
+      <div className="w-full max-w-2xl bg-[#1a1d29] rounded-2xl border border-slate-800 shadow-2xl p-6 md:p-8 space-y-8">
+        
+        {/* Header Section */}
+        <div className="text-center space-y-2 relative border-b border-slate-800 pb-6">
+          <div className="absolute top-0 right-0 bg-amber-500/10 text-amber-500 font-medium text-xs px-2.5 py-1 rounded-full border border-amber-500/20">
+            🔥 1 Day
+          </div>
+          <h1 className="text-4xl font-extrabold tracking-tight text-white flex items-center justify-center gap-2">
+            DailyClarity
+          </h1>
+          <p className="text-xs tracking-widest text-slate-400 uppercase font-semibold">
+            Turn Mental Chaos Into Focused Calm
+          </p>
+        </div>
+
+        {/* Brain Dump Input Section */}
+        <div className="bg-[#222636] rounded-xl p-5 border border-slate-700/50 space-y-4">
+          <label className="block text-sm font-medium text-slate-300">
+            What's on your mind? Tasks, worries, random thoughts — just dump it all here...
+          </label>
+          <div className="relative">
+            <textarea
+              value={thought}
+              onChange={(e) => setThought(e.target.value)}
+              maxLength={500}
+              rows={4}
+              className="w-full bg-[#161924] border border-slate-700 rounded-lg p-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 resize-none transition-all text-sm"
+              placeholder="Start typing your thoughts away..."
+            />
+            <div className="absolute bottom-3 right-3 text-xs text-slate-500 font-mono">
+              {thought.length}/500
             </div>
           </div>
+          <div className="flex justify-end">
+            <button 
+              onClick={() => setThought('')}
+              className="w-full sm:w-auto px-6 py-2.5 bg-slate-100 hover:bg-white text-slate-950 font-bold rounded-xl shadow-lg shadow-black/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-sm"
+            >
+              ✨ Get Clarity
+            </button>
+          </div>
+        </div>
 
-          <nav className="space-y-1">
-            {[
-              { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-              { id: "tasks", label: "Task Alignment", icon: CheckSquare },
-              { id: "timer", label: "Focus Matrix", icon: Clock },
-              { id: "ai", label: "Clarity AI Co-Pilot", icon: BrainCircuit },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActive 
-                      ? "bg-zinc-800 text-white shadow-inner" 
-                      : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+        {/* Navigation Tabs */}
+        <div className="flex border-b border-slate-800 gap-6 text-sm font-medium">
+          <button
+            onClick={() => setActiveTab('checklist')}
+            className={`pb-3 border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === 'checklist' ? 'border-orange-500 text-orange-500 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            📋 CHECKLIST
+          </button>
+          <button
+            onClick={() => setActiveTab('insights')}
+            className={`pb-3 border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === 'insights' ? 'border-orange-500 text-orange-500 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            📊 WEEKLY INSIGHTS
+          </button>
+        </div>
+
+        {/* Tab Contents */}
+        {activeTab === 'checklist' ? (
+          <div className="space-y-6">
+            {/* Habit Section Header */}
+            <div>
+              <h2 className="text-xs font-bold tracking-wider text-slate-400 uppercase">Presence Building</h2>
+              <h3 className="text-xl font-bold text-white mt-1">Daily Wellness Habits</h3>
+              <div className="text-xs text-slate-400 mt-1 font-medium bg-emerald-500/10 text-emerald-400 w-fit px-2 py-0.5 rounded border border-emerald-500/20">
+                {completedCount}/{habits.length} Done ({completionRate}%)
+              </div>
+            </div>
+
+            {/* Habit Items List */}
+            <div className="space-y-2.5">
+              {habits.map((habit) => (
+                <div
+                  key={habit.id}
+                  onClick={() => handleToggleHabit(habit.id)}
+                  className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                    habit.completed
+                      ? 'bg-emerald-500/5 border-emerald-500/30 text-slate-400 line-through'
+                      : 'bg-[#1e2231] border-slate-800 text-slate-200 hover:border-slate-700 hover:bg-[#23283a]'
                   }`}
                 >
-                  <Icon size={18} className={isActive ? "text-indigo-400" : "text-zinc-500"} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        <div className="p-3 bg-zinc-900/50 border border-zinc-800 rounded-xl flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white shadow-md shadow-indigo-500/10">
-            HQ
-          </div>
-          <div className="overflow-hidden">
-            <p className="text-xs font-semibold text-zinc-300 truncate">Workspace Active</p>
-            <p className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Production Ready
-            </p>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content Pane */}
-      <main className="flex-1 bg-[#09090b] flex flex-col overflow-hidden">
-        <header className="h-16 border-b border-zinc-800 bg-[#121214]/50 backdrop-blur-md flex items-center justify-between px-8 z-10">
-          <div className="flex items-center gap-2 text-sm text-zinc-400">
-            <span>Workspace</span>
-            <span className="text-zinc-600">/</span>
-            <span className="text-zinc-200 font-medium capitalize">{activeTab}</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-xs text-zinc-500 font-medium">Daily Score</p>
-              <p className="text-sm font-bold text-indigo-400">92 / 100</p>
-            </div>
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-8">
-          {activeTab === "dashboard" && (
-            <div className="space-y-6">
-              {/* Stat Metric Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {[
-                  { title: "Deep Work Sessions", value: "4 / 6", desc: "+1.2 hours over daily average", icon: Clock, color: "text-indigo-400" },
-                  { title: "Objective Completion", value: "88%", desc: "11 of 13 trackable tasks closed", icon: CheckSquare, color: "text-emerald-400" },
-                  { title: "Focus Metric Index", value: "84.2", desc: "Optimal psychological flow zone", icon: TrendingUp, color: "text-purple-400" },
-                ].map((stat, i) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div key={i} className="bg-[#121214] border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-all duration-200 shadow-sm">
-                      <div className="flex justify-between items-start mb-3">
-                        <span className="text-xs font-semibold text-zinc-400 tracking-wide uppercase">{stat.title}</span>
-                        <Icon size={18} className={stat.color} />
-                      </div>
-                      <p className="text-2xl font-bold tracking-tight text-white mb-1">{stat.value}</p>
-                      <p className="text-xs text-zinc-500 font-medium">{stat.desc}</p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Data Visual Analytics Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-[#121214] border border-zinc-800 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
-                    <TrendingUp size={16} className="text-indigo-400" /> Weekly Mental Clarity Index
-                  </h3>
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={initialPerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                        <XAxis dataKey="day" stroke="#71717a" fontSize={11} />
-                        <YAxis stroke="#71717a" fontSize={11} domain={[50, 100]} />
-                        <Tooltip contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: "8px", color: "#f4f4f5" }} />
-                        <Line type="monotone" dataKey="clarity" stroke="#4f46e5" strokeWidth={2.5} dot={{ fill: "#4f46e5", r: 4 }} activeDot={{ r: 6 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="bg-[#121214] border border-zinc-800 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
-                    <CheckSquare size={16} className="text-emerald-400" /> Executive Actions Executed
-                  </h3>
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={initialPerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                        <XAxis dataKey="day" stroke="#71717a" fontSize={11} />
-                        <YAxis stroke="#71717a" fontSize={11} />
-                        <Tooltip contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: "8px", color: "#f4f4f5" }} />
-                        <Bar dataKey="tasks" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "tasks" && (
-            <div className="max-w-3xl mx-auto space-y-6">
-              <div className="bg-[#121214] border border-zinc-800 rounded-xl p-6">
-                <h2 className="text-lg font-bold text-white mb-2">High-Alignment Task Vector</h2>
-                <p className="text-xs text-zinc-400 mb-5">Map core high-impact tasks to minimize decision fatigue.</p>
-                
-                <form onSubmit={addTask} className="flex gap-3 mb-6">
-                  <input
-                    type="text"
-                    value={newTask}
-                    onChange={(e) => setNewTask(e.target.value)}
-                    placeholder="Formulate highly actionable objective..."
-                    className="flex-1 bg-[#1c1c1f] border border-zinc-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors placeholder-zinc-600"
-                  />
-                  <select
-                    value={taskPriority}
-                    onChange={(e) => setTaskPriority(e.target.value)}
-                    className="bg-[#1c1c1f] border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-zinc-300"
-                  >
-                    <option value="high">High priority</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                  </select>
-                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-4 flex items-center justify-center gap-2 text-sm font-semibold transition-colors shadow-lg shadow-indigo-600/10">
-                    <Plus size={16} /> Track
-                  </button>
-                </form>
-
-                <div className="space-y-2">
-                  {tasks.map((task) => (
-                    <div 
-                      key={task.id} 
-                      className={`flex items-center justify-between p-3 border rounded-lg transition-all duration-200 ${
-                        task.completed 
-                          ? "bg-zinc-900/30 border-zinc-900 text-zinc-500" 
-                          : "bg-[#1c1c1f] border-zinc-800 text-zinc-200 hover:border-zinc-700"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <button onClick={() => toggleTask(task.id)} className="text-zinc-500 hover:text-indigo-400 transition-colors flex-shrink-0">
-                          {task.completed ? <CheckCircle2 size={18} className="text-emerald-500" /> : <Circle size={18} />}
-                        </button>
-                        <span className={`text-sm truncate ${task.completed ? "line-through font-normal" : "font-medium"}`}>{task.text}</span>
-                      </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                          task.priority === "high" ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" :
-                          task.priority === "medium" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
-                          "bg-zinc-700/30 text-zinc-400 border border-zinc-700/40"
-                        }`}>
-                          {task.priority}
-                        </span>
-                        <button onClick={() => deleteTask(task.id)} className="text-zinc-600 hover:text-rose-400 transition-colors p-1">
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "timer" && (
-            <div className="max-w-md mx-auto text-center space-y-6 py-8">
-              <div className="bg-[#121214] border border-zinc-800 rounded-2xl p-8 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent"></div>
-                <div className="mb-4">
-                  <span className="text-xs font-bold tracking-widest text-indigo-400 uppercase bg-indigo-500/5 border border-indigo-500/10 px-3 py-1 rounded-full">
-                    {timerMode === "work" ? "Deep Work Engine" : "Strategic Regeneration"}
-                  </span>
-                </div>
-                
-                <h2 className="text-7xl font-light font-mono text-white tracking-tight my-6 select-none">{formatTime(timeLeft)}</h2>
-                
-                <div className="flex justify-center gap-3 mb-4">
-                  <button
-                    onClick={() => setIsTimerRunning(!isTimerRunning)}
-                    className={`px-8 py-3 rounded-xl text-sm font-semibold shadow-lg transition-all duration-200 ${
-                      isTimerRunning 
-                        ? "bg-zinc-800 hover:bg-zinc-700 text-white" 
-                        : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20"
-                    }`}
-                  >
-                    {isTimerRunning ? "Pause" : "Initiate Block"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsTimerRunning(false);
-                      setTimeLeft(timerMode === "work" ? 25 * 60 : 5 * 60);
-                    }}
-                    className="bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 px-5 py-3 rounded-xl text-sm font-medium transition-colors"
-                  >
-                    Reset
-                  </button>
-                </div>
-                <p className="text-xs text-zinc-500 font-medium">Isolate variables. Focus purely on one key action standard.</p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "ai" && (
-            <div className="max-w-3xl mx-auto h-[550px] bg-[#121214] border border-zinc-800 rounded-xl flex flex-col overflow-hidden shadow-xl">
-              <div className="p-4 border-b border-zinc-800 bg-[#121214] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-indigo-400">
-                    <Sparkles size={16} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white">Clarity Vector Chat</h3>
-                    <p className="text-[10px] text-zinc-500 font-medium">Cognitive Load Optimization Engine</p>
-                  </div>
-                </div>
-                <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Online</span>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#09090b]/40">
-                {messages.map((m) => (
-                  <div key={m.id} className={`flex gap-3 max-w-[85%] ${m.sender === "user" ? "ml-auto flex-row-reverse" : ""}`}>
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center border flex-shrink-0 ${
-                      m.sender === "user" ? "bg-zinc-800 border-zinc-700 text-zinc-200" : "bg-indigo-600/10 border-indigo-600/20 text-indigo-400"
+                  <div className="flex items-center gap-3.5">
+                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                      habit.completed ? 'bg-emerald-500 border-emerald-500 text-slate-950' : 'border-slate-600 bg-transparent'
                     }`}>
-                      {m.sender === "user" ? <User size={14} /> : <Bot size={14} />}
+                      {habit.completed && (
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
                     </div>
-                    <div className={`p-3 rounded-xl text-sm leading-relaxed ${
-                      m.sender === "user" ? "bg-indigo-600 text-white font-medium shadow-md shadow-indigo-600/10" : "bg-[#1c1c1f] border border-zinc-800 text-zinc-300"
-                    }`}>
-                      {m.text}
+                    <span className="text-sm font-medium">{habit.text}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add Custom Habit Form */}
+            <form onSubmit={handleAddHabit} className="flex gap-2">
+              <input
+                type="text"
+                value={newHabit}
+                onChange={(e) => setNewHabit(e.target.value)}
+                placeholder="Add custom habit (e.g., Read 10 pages) 📝..."
+                className="flex-1 bg-[#161924] border border-slate-700/70 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+              />
+              <button
+                type="submit"
+                className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-sm px-4 rounded-xl transition-all"
+              >
+                + Add
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Metrics Dashboard Layout */}
+            <div>
+              <h2 className="text-xs font-bold tracking-wider text-slate-400 uppercase">Metrics & Analysis</h2>
+              <h3 className="text-xl font-bold text-white mt-1">Weekly Performance Insights</h3>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-[#1e2231] border border-slate-800 rounded-xl p-4 text-center">
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Completion Rate</div>
+                <div className="text-2xl font-black text-white mt-1 font-mono">{completionRate}%</div>
+              </div>
+              <div className="bg-[#1e2231] border border-slate-800 rounded-xl p-4 text-center">
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Weekly Streak</div>
+                <div className="text-2xl font-black text-white mt-1 font-mono">0d</div>
+              </div>
+              <div className="bg-[#1e2231] border border-slate-800 rounded-xl p-4 text-center">
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Check-ins</div>
+                <div className="text-2xl font-black text-white mt-1 font-mono">{completedCount}/28</div>
+              </div>
+            </div>
+
+            {/* Habit Consistency Progress Bars */}
+            <div className="bg-[#1e2231] border border-slate-800 rounded-xl p-5 space-y-4">
+              <h4 className="text-xs font-bold tracking-wider text-slate-400 uppercase">Habit Consistency Breakdown</h4>
+              <div className="space-y-3">
+                {habits.map(habit => (
+                  <div key={habit.id} className="space-y-1">
+                    <div className="flex justify-between text-xs font-medium">
+                      <span className="text-slate-300">{habit.text}</span>
+                      <span className="text-slate-400 font-mono">{habit.completed ? '1/7 days (14%)' : '0/7 days (0%)'}</span>
+                    </div>
+                    <div className="w-full bg-[#161924] h-2 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${habit.completed ? 'bg-emerald-500 w-[14%]' : 'bg-slate-700 w-0'}`}
+                      />
                     </div>
                   </div>
                 ))}
               </div>
-
-              <form onSubmit={handleSendMessage} className="p-4 border-t border-zinc-800 bg-[#121214] flex gap-2">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Ask how to reduce clutter or optimize execution strategies..."
-                  className="flex-1 bg-[#1c1c1f] border border-zinc-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors placeholder-zinc-600"
-                />
-                <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-4 flex items-center justify-center transition-colors shadow-lg shadow-indigo-600/10">
-                  <Send size={15} />
-                </button>
-              </form>
             </div>
-          )}
-        </div>
-      </main>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
