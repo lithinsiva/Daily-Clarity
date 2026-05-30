@@ -5,13 +5,11 @@ export default function App() {
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 🧠 Instant Real-Time Clarity Engine
   const handleGetClarity = () => {
     if (!thought.trim()) return;
     setIsLoading(true);
     setAiResponse(null);
 
-    // This instantly reads the input text and generates a custom response layout
     setTimeout(() => {
       const lowerThought = thought.toLowerCase();
       let responseText = "";
@@ -41,7 +39,7 @@ export default function App() {
           </p>
         </div>
 
-        {/* Two-Column Middle Layout - Matches Your Photo Exactly */}
+        {/* Two-Column Middle Layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
           
           {/* Left Column: Input Panel */}
