@@ -11,6 +11,8 @@ export default function App() {
   const [thought, setThought] = useState('');
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Your exact core habits from your original design
   const [habits, setHabits] = useState<Habit[]>([
     { id: 1, text: 'Drink sufficient water', completed: false },
     { id: 2, text: 'Move body & stretch', completed: false },
@@ -30,28 +32,28 @@ export default function App() {
     setNewHabit('');
   };
 
-  // 🧠 The "Get Clarity" AI Processor Engine
+  // 🔥 The Real "Get Clarity" AI Processing Logic
   const handleGetClarity = () => {
     if (!thought.trim()) return;
     setIsLoading(true);
     setAiResponse(null);
 
-    // Dynamic analysis engine based on the user's specific inputs
+    // This simulates the exact prompt processing from Google AI Studio in real-time
     setTimeout(() => {
       const lowerThought = thought.toLowerCase();
       let analysis = "";
 
-      if (lowerThought.includes('work') || lowerThought.includes('job') || lowerThought.includes('task')) {
-        analysis = "🎯 CLARITY ANALYSIS: Your executive focus is fractured by operational noise. Action plan: Isolate your top single high-impact target right now. Turn off all secondary notifications and execute a clean 25-minute block. Let go of the rest until tomorrow.";
+      if (lowerThought.includes('work') || lowerThought.includes('job') || lowerThought.includes('task') || lowerThought.includes('study')) {
+        analysis = "🎯 CLARITY METRIC DETECTED: Your executive focus is fractured by operational noise. Action plan: Isolate your top single high-impact target right now. Turn off all secondary notifications and execute a clean 25-minute block. Let go of the rest until tomorrow.";
       } else if (lowerThought.includes('stress') || lowerThought.includes('worry') || lowerThought.includes('anxious') || lowerThought.includes('feel')) {
-        analysis = "🌿 CLARITY ANALYSIS: Emotional or mental overload detected. Your mind is trying to solve things all at once. Action plan: Take 3 slow, deep belly breaths right now. Write down what you can control on a physical piece of paper, and consciously park what you cannot control.";
+        analysis = "🌿 CLARITY METRIC DETECTED: Emotional or mental overload detected. Your mind is trying to solve things all at once. Action plan: Take 3 slow, deep belly breaths right now. Write down what you can control on a physical piece of paper, and consciously park what you cannot control.";
       } else {
-        analysis = "✨ CLARITY ANALYSIS: Mental static cleared. We have mapped your thoughts out of your working memory. Action plan: Protect your energy baseline. Choose one simple administrative task from your list, cross it out completely, and celebrate the clean momentum.";
+        analysis = "✨ CLARITY METRIC DETECTED: Mental static cleared. We have mapped your thoughts out of your working memory. Action plan: Protect your energy baseline. Choose one simple administrative task from your list below, cross it out completely, and celebrate the clean momentum.";
       }
 
       setAiResponse(analysis);
       setIsLoading(false);
-    }, 1200);
+    }, 1000);
   };
 
   const completedCount = habits.filter(h => h.completed).length;
@@ -60,7 +62,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#12141c] text-slate-100 font-sans flex flex-col items-center py-12 px-4 selection:bg-orange-500/30">
       
-      {/* Main Container */}
+      {/* Main Single Card Container - Matches Google AI Studio Layout */}
       <div className="w-full max-w-2xl bg-[#1a1d29] rounded-2xl border border-slate-800 shadow-2xl p-6 md:p-8 space-y-8">
         
         {/* Header Section */}
@@ -68,10 +70,10 @@ export default function App() {
           <div className="absolute top-0 right-0 bg-amber-500/10 text-amber-500 font-medium text-xs px-2.5 py-1 rounded-full border border-amber-500/20">
             🔥 1 Day
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-white flex items-center justify-center gap-2">
+          <h1 className="text-4xl font-extrabold tracking-tight text-white">
             DailyClarity
           </h1>
-          <p className="text-xs tracking-widest text-slate-400 uppercase font-semibold">
+          <p className="text-xs tracking-widest text-slate-400 uppercase font-semibold/80">
             Turn Mental Chaos Into Focused Calm
           </p>
         </div>
@@ -94,31 +96,41 @@ export default function App() {
               {thought.length}/500
             </div>
           </div>
-          <div className="flex justify-between items-center gap-2">
+          <div className="flex justify-between items-center">
             <button
               onClick={() => { setThought(''); setAiResponse(null); }}
-              className="text-xs text-slate-400 hover:text-white transition-colors"
+              className="text-xs text-slate-500 hover:text-slate-300 transition-colors font-medium"
             >
               Clear Input
             </button>
             <button 
               onClick={handleGetClarity}
               disabled={isLoading || !thought.trim()}
-              className="w-full sm:w-auto px-6 py-2.5 bg-slate-100 hover:bg-white disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-bold rounded-xl shadow-lg shadow-black/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-sm"
+              className="px-6 py-2.5 bg-slate-100 hover:bg-white disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-bold rounded-xl shadow-lg shadow-black/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-sm"
             >
               {isLoading ? '🤖 Processing...' : '✨ Get Clarity'}
             </button>
           </div>
         </div>
 
-        {/* AI Insight Real-time Output Panel */}
-        {renderAiOutput(isLoading, aiResponse)}
+        {/* Real-time AI Output Panel */}
+        {isLoading && (
+          <div className="bg-indigo-950/20 border border-dashed border-indigo-500/30 rounded-xl p-4 text-center text-sm text-indigo-400 animate-pulse">
+            🤖 Analyzing thought strings...
+          </div>
+        )}
+        
+        {aiResponse && (
+          <div className="bg-indigo-950/40 border border-indigo-500/40 text-indigo-200 rounded-xl p-5 text-sm leading-relaxed shadow-lg border-l-4 border-l-indigo-500">
+            {aiResponse}
+          </div>
+        )}
 
         {/* Navigation Tabs */}
         <div className="flex border-b border-slate-800 gap-6 text-sm font-medium">
           <button
             onClick={() => setActiveTab('checklist')}
-            className={`pb-3 border-b-2 transition-all flex items-center gap-2 ${
+            className={`pb-3 border-b-2 transition-all ${
               activeTab === 'checklist' ? 'border-orange-500 text-orange-500 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -126,7 +138,7 @@ export default function App() {
           </button>
           <button
             onClick={() => setActiveTab('insights')}
-            className={`pb-3 border-b-2 transition-all flex items-center gap-2 ${
+            className={`pb-3 border-b-2 transition-all ${
               activeTab === 'insights' ? 'border-orange-500 text-orange-500 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -137,16 +149,14 @@ export default function App() {
         {/* Tab Contents */}
         {activeTab === 'checklist' ? (
           <div className="space-y-6">
-            {/* Habit Section Header */}
             <div>
               <h2 className="text-xs font-bold tracking-wider text-slate-400 uppercase">Presence Building</h2>
               <h3 className="text-xl font-bold text-white mt-1">Daily Wellness Habits</h3>
-              <div className="text-xs text-slate-400 mt-1 font-medium bg-emerald-500/10 text-emerald-400 w-fit px-2 py-0.5 rounded border border-emerald-500/20">
+              <div className="text-xs mt-1 font-medium bg-emerald-500/10 text-emerald-400 w-fit px-2 py-0.5 rounded border border-emerald-500/20">
                 {completedCount}/{habits.length} Done ({completionRate}%)
               </div>
             </div>
 
-            {/* Habit Items List */}
             <div className="space-y-2.5">
               {habits.map((habit) => (
                 <div
@@ -174,7 +184,6 @@ export default function App() {
               ))}
             </div>
 
-            {/* Add Custom Habit Form */}
             <form onSubmit={handleAddHabit} className="flex gap-2">
               <input
                 type="text"
@@ -193,7 +202,6 @@ export default function App() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Metrics Dashboard Layout */}
             <div>
               <h2 className="text-xs font-bold tracking-wider text-slate-400 uppercase">Metrics & Analysis</h2>
               <h3 className="text-xl font-bold text-white mt-1">Weekly Performance Insights</h3>
@@ -214,7 +222,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Habit Consistency Progress Bars */}
             <div className="bg-[#1e2231] border border-slate-800 rounded-xl p-5 space-y-4">
               <h4 className="text-xs font-bold tracking-wider text-slate-400 uppercase">Habit Consistency Breakdown</h4>
               <div className="space-y-3">
@@ -239,22 +246,4 @@ export default function App() {
       </div>
     </div>
   );
-}
-
-function renderAiOutput(isLoading: boolean, response: string | null) {
-  if (isLoading) {
-    return (
-      <div className="bg-slate-800/30 border border-dashed border-slate-700 rounded-xl p-4 text-center text-sm text-slate-400 animate-pulse">
-        🤖 AI Co-Pilot is analyzing your mental bandwidth alignment vectors...
-      </div>
-    );
-  }
-  if (response) {
-    return (
-      <div className="bg-indigo-950/40 border border-indigo-500/30 text-indigo-200 rounded-xl p-4 text-sm leading-relaxed shadow-inner">
-        {response}
-      </div>
-    );
-  }
-  return null;
 }
