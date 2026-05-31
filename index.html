@@ -3,385 +3,348 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DailyClarity - Mental Focus Engine</title>
+    <title>DailyClarity — Focus Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
         
-        /* Breathing Animation Cycles */
-        .breath-circle {
-            transition: transform 4s ease-in-out, background-color 4s ease-in-out;
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
         }
-        .breath-expand { transform: scale(1.3); background-color: rgba(16, 185, 129, 0.2); }
-        .breath-contract { transform: scale(0.9); background-color: rgba(16, 185, 129, 0.05); }
-        .breath-hold { transform: scale(1.1); background-color: rgba(245, 158, 11, 0.1); }
+        .font-mono {
+            font-family: 'Space Mono', monospace;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-modal {
+            animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .breathing-circle-anim {
+            transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1), background-color 1s ease;
+        }
     </style>
 </head>
-<body class="min-h-screen bg-[#0c0f0e] text-[#e6ece8] font-sans antialiased selection:bg-emerald-500/20 selection:text-emerald-300">
+<body class="min-h-screen bg-[#0c0f0e] text-[#e6ece8] selection:bg-emerald-500/20 selection:text-emerald-300 pb-12">
 
-    <header class="border-b border-neutral-900 bg-[#131816]/80 backdrop-blur-md sticky top-0 z-40 px-4 py-3">
-        <div class="max-w-2xl mx-auto flex items-center justify-between">
-            <button id="sidebar-toggle-btn" class="flex items-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-white bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 transition-all">
-                <i data-lucide="sliders" class="w-3.5 h-3.5 text-amber-500"></i> History
-            </button>
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full text-[11px] font-bold">
-                    🔥 3 Days
-                </div>
-                <div class="text-[11px] font-medium text-neutral-400 border border-neutral-800 bg-neutral-900/60 px-2.5 py-1 rounded-full">
-                    ⚡ <span class="text-emerald-400 font-bold">9 of 10</span> free uses remaining today
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <main class="max-w-2xl mx-auto px-4 py-8 space-y-6">
+    <div class="max-w-xl mx-auto px-4 pt-8 space-y-6">
         
-        <div class="text-center py-2 space-y-0.5">
-            <h1 class="text-3xl font-extrabold tracking-tight text-white">DailyClarity</h1>
-            <p class="text-xs uppercase tracking-widest text-neutral-500 font-bold">Turn Mental Chaos Into Focused Calm</p>
+        <div class="text-center py-4">
+            <h1 class="text-3xl font-extrabold tracking-tight text-white mb-1">
+                Daily<span class="text-neutral-400 font-normal">Clarity</span>
+            </h1>
+            <p class="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-bold">Turn Mental Chaos Into Focused Calm</p>
         </div>
 
-        <div id="input-workspace-card" class="bg-[#131816] border border-neutral-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="bg-[#131816] border border-[#232c28] rounded-2xl p-5 shadow-xl space-y-4">
             <div class="relative">
-                <textarea id="thought-textarea" class="w-full h-32 bg-transparent text-sm text-neutral-200 focus:outline-none placeholder:text-neutral-600 resize-none font-medium leading-relaxed" placeholder="What's on your mind? Tasks, worries, random thoughts — just dump it all here..."></textarea>
-                <div class="absolute bottom-0 left-0 flex items-center justify-between w-full text-[10px] font-bold text-neutral-500 uppercase tracking-wider bg-[#131816] pt-2">
-                    <span>🎙️ Speak Thoughts</span>
+                <textarea id="main-thought-input" class="w-full h-32 bg-transparent text-sm text-neutral-200 focus:outline-none placeholder:text-neutral-600 resize-none font-medium leading-relaxed" placeholder="What's on your mind? Tasks, worries, random thoughts — just dump it all here..."></textarea>
+                <div class="absolute bottom-0 left-0 flex items-center justify-between w-full text-[9px] font-bold text-neutral-500 uppercase tracking-wider bg-[#131816] pt-2">
+                    <span class="cursor-pointer hover:text-neutral-300 transition-colors flex items-center gap-1">🎙️ Speak Thoughts</span>
                     <span id="char-counter" class="font-mono text-neutral-600">0/500</span>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 pt-2 border-t border-neutral-900/60">
-                <input type="checkbox" id="priority-checkbox" class="rounded bg-neutral-900 border-neutral-800 text-amber-500 focus:ring-0 w-3.5 h-3.5 cursor-pointer">
-                <label for="priority-checkbox" class="text-xs font-bold text-neutral-400 flex items-center gap-1.5 select-none cursor-pointer hover:text-neutral-300 transition-colors">
+            <div class="flex items-center gap-2 pt-3 border-t border-neutral-900">
+                <input type="checkbox" id="high-priority-check" class="rounded bg-neutral-900 border-[#232c28] text-amber-500 focus:ring-0 w-3.5 h-3.5 cursor-pointer">
+                <label SafeFor="high-priority-check" class="text-xs font-semibold text-neutral-400 flex items-center gap-1.5 select-none cursor-pointer hover:text-neutral-300 transition-colors">
                     <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-500"></i> Mark as high priority (Must do item)
                 </label>
             </div>
 
-            <button id="submit-thought-btn" class="w-full bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-100 font-bold text-xs py-3 rounded-xl transition-all flex items-center justify-center gap-1.5">
-                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
-                <span>Get Clarity ✨</span>
+            <button id="get-clarity-btn" class="w-full bg-[#e6ece8] hover:bg-[#d8ded9] text-[#0c0f0e] font-bold text-xs py-3.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-black/20">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                <span>Get Clarity</span>
             </button>
         </div>
 
-        <div id="breathing-workspace-card" class="hidden bg-[#131816] border border-neutral-800 rounded-2xl p-8 text-center space-y-6 shadow-2xl animate-fadeIn">
-            <div class="space-y-1">
-                <span class="text-[10px] font-bold tracking-widest uppercase text-emerald-400">Somatic Regulation Step</span>
-                <p class="text-xs text-neutral-400">Let's clear the mental cache before approaching the action items.</p>
-            </div>
-            
-            <div class="flex justify-center items-center py-6">
-                <div id="breath-node" class="breath-circle w-40 h-40 rounded-full border-4 border-emerald-500 flex flex-col items-center justify-center shadow-lg shadow-emerald-500/5">
-                    <span id="breath-phase-text" class="text-xs uppercase font-black tracking-widest text-emerald-400">Breathe In</span>
-                    <span id="breath-timer-text" class="text-3xl font-mono font-black text-white mt-1">4s</span>
-                </div>
-            </div>
-
-            <p id="breath-instruction-text" class="text-xs text-neutral-400 italic max-w-sm mx-auto">Fill your lungs entirely with clean, cool air...</p>
-            <button id="skip-breathing-btn" class="text-[11px] font-bold text-neutral-500 hover:text-neutral-300 transition-colors underline">Skip Breathing Transition →</button>
-        </div>
-
-        <div id="ai-response-card" class="hidden bg-[#131816] border border-neutral-800 rounded-2xl p-5 shadow-xl space-y-4 animate-fadeIn">
+        <div id="ai-response-plan-box" class="hidden bg-[#131816] border border-[#232c28] rounded-2xl p-5 shadow-xl space-y-4 animate-modal">
             <div>
-                <span class="text-[10px] font-bold tracking-widest uppercase text-emerald-400">AI Alignment Output Plan</span>
-                <h3 class="text-sm font-bold text-neutral-200 mt-0.5">Prioritized Focus Blocks</h3>
+                <span class="text-[9px] font-bold tracking-widest uppercase text-emerald-400 font-mono">AI Alignment Output Plan</span>
+                <h3 class="text-sm font-bold text-white mt-0.5">Prioritized Focus Blocks</h3>
             </div>
-            <div id="ai-plan-list-target" class="space-y-2.5 text-xs">
+            <div id="ai-steps-container" class="space-y-2.5 text-xs">
                 </div>
             <div class="pt-3 border-t border-neutral-900 text-xs leading-relaxed text-neutral-400">
-                🌿 <span class="font-bold text-neutral-300">Insight:</span> <span id="ai-insight-target"></span>
+                🌿 <span class="font-bold text-neutral-200">Release Phrase:</span> <span id="ai-phrase-target" class="italic"></span>
             </div>
         </div>
 
-        <div class="bg-[#131816] border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
-            <div class="flex border-b border-neutral-800 bg-neutral-900/30">
-                <button id="tab-checklist-btn" class="flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black border-b-2 border-emerald-500 text-emerald-400 bg-emerald-500/[0.01] transition-all">
-                    <i data-lucide="check-square" class="w-3.5 h-3.5"></i> CHECKLIST
+        <div class="bg-[#131816] border border-[#232c28] rounded-2xl overflow-hidden shadow-xl">
+            <div class="flex border-b border-neutral-900 bg-neutral-900/20">
+                <button id="tab-checklist" class="flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold border-b-2 border-emerald-500 text-emerald-400 transition-all">
+                    <i data-lucide="check-square" class="w-3.5 h-3.5"></i> Checklist
                 </button>
-                <button id="tab-insights-btn" class="flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black border-b-2 border-transparent text-neutral-500 hover:text-neutral-300 transition-all">
-                    <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i> WEEKLY INSIGHTS
+                <button id="tab-insights" class="flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold border-b-2 border-transparent text-neutral-500 hover:text-neutral-300 transition-all">
+                    <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i> Weekly Insights
                 </button>
             </div>
 
             <div class="p-5">
-                <div id="checklist-panel" class="space-y-6">
-                    <div class="space-y-0.5">
-                        <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest block">Presence Building</span>
-                        <div class="flex justify-between items-center">
-                            <h3 class="text-base font-bold text-neutral-200">Daily Wellness Habits</h3>
-                            <span id="completion-ratio-text" class="text-xs text-neutral-400 font-mono">0/4 Done (0%)</span>
-                        </div>
+                <div id="checklist-panel" class="space-y-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-wider">Presence Building Habits</h3>
+                        <span id="habit-progress-text" class="text-xs font-mono text-neutral-500">0/4 Done</span>
                     </div>
 
-                    <div class="space-y-1.5 bg-neutral-900/30 border border-neutral-800/60 p-3 rounded-xl">
-                        <div class="flex justify-between text-[11px] font-bold text-neutral-400">
-                            <span>7-Day Consistency Trend</span>
-                            <span class="text-emerald-400">Weekly Flow</span>
-                        </div>
-                        <div class="grid grid-cols-7 gap-1 pt-1 text-center font-mono text-[9px] text-neutral-500">
-                            <div><div class="h-1 bg-neutral-800 rounded-full mb-1"></div>Sun</div>
-                            <div><div class="h-1 bg-neutral-800 rounded-full mb-1"></div>Mon</div>
-                            <div><div class="h-1 bg-neutral-800 rounded-full mb-1"></div>Tue</div>
-                            <div><div class="h-1 bg-neutral-800 rounded-full mb-1"></div>Wed</div>
-                            <div><div class="h-1 bg-neutral-800 rounded-full mb-1"></div>Thu</div>
-                            <div><div class="h-1 bg-neutral-800 rounded-full mb-1"></div>Fri</div>
-                            <div class="text-emerald-400"><div class="h-1 bg-emerald-500 rounded-full mb-1"></div>Sat</div>
-                        </div>
-                    </div>
-
-                    <div id="habit-items-container" class="space-y-2">
+                    <div id="habits-list-root" class="space-y-2">
                         </div>
 
-                    <div class="flex gap-2">
-                        <input type="text" id="custom-habit-input" class="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 text-xs text-neutral-300 placeholder:text-neutral-600 focus:outline-none focus:border-neutral-700" placeholder="Add custom habit (e.g., Read 10 pages)...">
-                        <button id="add-habit-btn" class="bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-neutral-300 text-xs px-4 py-2.5 rounded-xl font-bold transition-colors">+ Add</button>
+                    <div class="flex gap-2 pt-2">
+                        <input type="text" id="add-habit-input" class="flex-1 bg-neutral-900/60 border border-[#232c28] rounded-xl px-4 py-2.5 text-xs text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-neutral-700" placeholder="Add custom habit (e.g., Read 10 pages)...">
+                        <button id="submit-habit-btn" class="bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-neutral-200 text-xs px-4 rounded-xl font-bold transition-all">+ Add</button>
                     </div>
                 </div>
 
-                <div id="insights-panel" class="hidden space-y-6 animate-fadeIn">
-                    <div class="space-y-0.5">
-                        <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest block">Metrics Summary</span>
-                        <h3 class="text-base font-bold text-neutral-200">Weekly Performance Insights</h3>
-                    </div>
-                    <div class="grid grid-cols-3 gap-3 text-center font-mono">
-                        <div class="bg-neutral-900/60 p-3 border border-neutral-800 rounded-xl">
-                            <span class="text-[10px] text-neutral-500 block">COMPLETION RATE</span>
-                            <span class="text-xl font-bold text-white mt-1 block">0%</span>
+                <div id="insights-panel" class="hidden space-y-4 py-2 animate-modal">
+                    <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-wider">Historical Metrical Tracking</h3>
+                    <div class="grid grid-cols-3 gap-3 text-center font-mono text-xs">
+                        <div class="bg-neutral-900/40 p-3 border border-[#232c28] rounded-xl">
+                            <span class="text-[10px] text-neutral-500 block uppercase">Completion</span>
+                            <span class="text-base font-bold text-white mt-0.5 block">0%</span>
                         </div>
-                        <div class="bg-neutral-900/60 p-3 border border-neutral-800 rounded-xl">
-                            <span class="text-[10px] text-neutral-500 block">WEEKLY STREAK</span>
-                            <span class="text-xl font-bold text-white mt-1 block">3d</span>
+                        <div class="bg-neutral-900/40 p-3 border border-[#232c28] rounded-xl">
+                            <span class="text-[10px] text-neutral-500 block uppercase">Streak</span>
+                            <span class="text-base font-bold text-white mt-0.5 block">3d</span>
                         </div>
-                        <div class="bg-neutral-900/60 p-3 border border-neutral-800 rounded-xl">
-                            <span class="text-[10px] text-neutral-500 block">CHECK-INS</span>
-                            <span class="text-xl font-bold text-white mt-1 block">0 / 28</span>
+                        <div class="bg-neutral-900/40 p-3 border border-[#232c28] rounded-xl">
+                            <span class="text-[10px] text-neutral-500 block uppercase">Ratio</span>
+                            <span class="text-base font-bold text-white mt-0.5 block">0/28</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="bg-[#131816] border border-neutral-800 rounded-2xl p-5 shadow-xl space-y-4">
-            <div class="flex items-center gap-2 border-b border-neutral-800 pb-2">
-                <span class="text-amber-400 font-bold">⚡</span>
-                <h4 class="text-xs font-black uppercase tracking-wider text-neutral-200">Direct Sync Integrations</h4>
-            </div>
-            <div class="p-4 bg-neutral-900/40 border border-neutral-800 rounded-xl space-y-3">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-neutral-300">💼 Configure Notion Workspace Credentials</span>
-                    <span class="text-[9px] bg-neutral-800 px-1.5 py-0.5 rounded font-mono text-neutral-400">Notion Core</span>
-                </div>
-                <div class="space-y-2 text-xs">
-                    <div>
-                        <label class="text-[10px] font-bold text-neutral-500 uppercase block mb-1">Workspace Domain Name</label>
-                        <input type="text" value="daily-clarity.notion.site" class="w-full bg-[#131816] border border-neutral-800 rounded-lg p-2 font-mono text-neutral-400 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-neutral-500 uppercase block mb-1">Notion Integration Key</label>
-                        <input type="password" value="secret_1029384756102938" class="w-full bg-[#131816] border border-neutral-800 rounded-lg p-2 font-mono text-neutral-400 focus:outline-none">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
+    </div>
 
-    <div id="history-sidebar" class="hidden fixed inset-0 z-50 flex justify-end animate-fadeIn">
-        <div id="sidebar-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-        <div class="relative w-80 h-full bg-[#131816] border-l border-neutral-800 p-5 flex flex-col space-y-6 shadow-2xl">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h3 class="text-sm font-black text-white">DailyClarity Insights</h3>
-                    <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Mental History Log</span>
-                </div>
-                <button id="sidebar-close-btn" class="p-1 text-neutral-500 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+    <div id="breathing-modal-overlay" class="hidden fixed inset-0 bg-[#0c0f0e]/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="max-w-md w-full text-center space-y-8 p-6 animate-modal">
+            <div class="space-y-1.5">
+                <span class="text-[10px] font-bold tracking-[0.2em] uppercase text-emerald-400 font-mono block">Somatic Reset Phase</span>
+                <h2 class="text-xl font-bold text-white">Clear Your Mind Before Acting</h2>
             </div>
-            <div class="flex-1 overflow-y-auto space-y-3 text-xs">
-                <div class="p-3 bg-neutral-900/60 border border-neutral-800 rounded-xl space-y-2">
-                    <span class="text-[9px] bg-neutral-800 text-neutral-300 px-1.5 py-0.5 rounded font-mono font-bold">📅 MAY 31, 09:56 AM</span>
-                    <p class="text-neutral-300 italic">"I am very stressed today."</p>
+
+            <div class="flex justify-center items-center py-4">
+                <div id="breathing-sphere-node" class="breathing-circle-anim w-44 h-44 rounded-full border border-emerald-500/30 bg-emerald-500/5 flex flex-col items-center justify-center shadow-2xl shadow-emerald-500/10">
+                    <span id="breath-state-label" class="text-xs uppercase font-bold tracking-widest text-emerald-400">Breathe In</span>
+                    <span id="breath-timer-display" class="text-4xl font-mono font-black text-white mt-1">4s</span>
                 </div>
             </div>
+
+            <p id="breath-instruction-label" class="text-xs text-neutral-400 italic max-w-xs mx-auto min-h-[32px]">
+                Inhale deeply through your nose, filling your lungs entirely...
+            </p>
+
+            <button id="skip-breathing-modal" class="text-[11px] text-neutral-500 hover:text-neutral-300 font-bold transition-all uppercase tracking-wider underline block mx-auto">
+                Skip Transition Process →
+            </button>
         </div>
     </div>
 
     <script>
-        // Memory Architecture Model
-        const AppState = {
+        // Internal Global State Engine Database
+        const ApplicationDatabase = {
             habits: [
-                { id: 1, text: "Drink water", completed: false, priority: false },
-                { id: 2, text: "Move body & stretch", completed: false, priority: true },
-                { id: 3, text: "Mindful breathing (3m)", completed: false, priority: false },
-                { id: 4, text: "Digital sunset (screens off)", completed: false, priority: false }
+                { id: 1, label: 'Drink water', done: false, isMust: false },
+                { id: 2, label: 'Move body & stretch', done: false, isMust: true },
+                { id: 3, label: 'Mindful breathing (3m)', done: false, isMust: false },
+                { id: 4, label: 'Digital sunset (screens off)', done: false, isMust: false }
             ],
-            breathingPhases: [
-                { title: 'Breathe In', time: 4, cls: 'breath-expand', instruction: 'Fill your lungs entirely with clean, cool air...' },
-                { title: 'Suspend', time: 4, cls: 'breath-hold', instruction: 'Hold still, experiencing total mental silence...' },
-                { title: 'Breathe Out', time: 4, cls: 'breath-contract', instruction: 'Exhale fully, clearing structural anxiety blocks...' },
-                { title: 'Rest Cycle', time: 4, cls: 'breath-hold', instruction: 'Be static. Welcome clarity.' }
+            // 4-7-8 Breathing Sequence Setup Arrays
+            breathingSteps: [
+                { label: 'Breathe In', duration: 4, scale: 'scale-[1.25]', bg: 'rgba(16,185,129,0.15)', desc: 'Inhale deeply through your nose, filling your lungs entirely...' },
+                { label: 'Hold', duration: 7, scale: 'scale-[1.25]', bg: 'rgba(245,158,11,0.1)', desc: 'Suspend your breathing, anchoring your inner awareness...' },
+                { label: 'Breathe Out', duration: 8, scale: 'scale-[0.95]', bg: 'rgba(16,185,129,0.02)', desc: 'Exhale fully through your mouth, dropping hidden physical stress...' }
             ],
-            currentBreathIndex: 0,
-            breathTimer: null
+            activeBreathIndex: 0,
+            intervalTracker: null
         };
 
-        // DOM Element Matrix
-        const thoughtTextarea = document.getElementById('thought-textarea');
+        // DOM Mapping References
+        const thoughtInput = document.getElementById('main-thought-input');
         const charCounter = document.getElementById('char-counter');
-        const submitThoughtBtn = document.getElementById('submit-thought-btn');
-        const inputCard = document.getElementById('input-workspace-card');
-        const breathingCard = document.getElementById('breathing-workspace-card');
-        const aiResponseCard = document.getElementById('ai-response-card');
-        const habitContainer = document.getElementById('habit-items-container');
-        const completionRatioText = document.getElementById('completion-ratio-text');
+        const getClarityBtn = document.getElementById('get-clarity-btn');
+        const aiResponsePlanBox = document.getElementById('ai-response-plan-box');
+        const aiStepsContainer = document.getElementById('ai-steps-container');
+        const aiPhraseTarget = document.getElementById('ai-phrase-target');
         
-        // Counter Event
-        thoughtTextarea.addEventListener('input', (e) => {
+        const habitsListRoot = document.getElementById('habits-list-root');
+        const habitProgressText = document.getElementById('habit-progress-text');
+        const addHabitInput = document.getElementById('add-habit-input');
+        const submitHabitBtn = document.getElementById('submit-habit-btn');
+        
+        const tabChecklist = document.getElementById('tab-checklist');
+        const tabInsights = document.getElementById('tab-insights');
+        const checklistPanel = document.getElementById('checklist-panel');
+        const insightsPanel = document.getElementById('insights-panel');
+
+        const breathingModalOverlay = document.getElementById('breathing-modal-overlay');
+        const breathingSphereNode = document.getElementById('breathing-sphere-node');
+        const breathStateLabel = document.getElementById('breath-state-label');
+        const breathTimerDisplay = document.getElementById('breath-timer-display');
+        const breathInstructionLabel = document.getElementById('breath-instruction-label');
+
+        // Text Character Live Tracking Counter Event
+        thoughtInput.addEventListener('input', (e) => {
             charCounter.textContent = `${e.target.value.length}/500`;
         });
 
-        // Toggle Views Tabs
-        document.getElementById('tab-checklist-btn').addEventListener('click', (e) => {
-            toggleTabs(true, e.currentTarget, document.getElementById('tab-insights-btn'));
-        });
-        document.getElementById('tab-insights-btn').addEventListener('click', (e) => {
-            toggleTabs(false, e.currentTarget, document.getElementById('tab-checklist-btn'));
-        });
+        // Interactive View Switching Router Tabs Logic
+        tabChecklist.addEventListener('click', () => togglePrimaryTabs(true));
+        tabInsights.addEventListener('click', () => togglePrimaryTabs(false));
 
-        function toggleTabs(showChecklist, activeBtn, inactiveBtn) {
-            activeBtn.className = "flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black border-b-2 border-emerald-500 text-emerald-400 bg-emerald-500/[0.01] transition-all";
-            inactiveBtn.className = "flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black border-b-2 border-transparent text-neutral-500 hover:text-neutral-300 transition-all";
-            document.getElementById('checklist-panel').classList.toggle('hidden', !showChecklist);
-            document.getElementById('insights-panel').classList.toggle('hidden', showChecklist);
+        function togglePrimaryTabs(showChecklist) {
+            if (showChecklist) {
+                tabChecklist.className = "flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold border-b-2 border-emerald-500 text-emerald-400 transition-all";
+                tabInsights.className = "flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold border-b-2 border-transparent text-neutral-500 hover:text-neutral-300 transition-all";
+                checklistPanel.classList.remove('hidden');
+                insightsPanel.classList.add('hidden');
+            } else {
+                tabInsights.className = "flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold border-b-2 border-emerald-500 text-emerald-400 transition-all";
+                tabChecklist.className = "flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold border-b-2 border-transparent text-neutral-500 hover:text-neutral-300 transition-all";
+                insightsPanel.classList.remove('hidden');
+                checklistPanel.classList.add('hidden');
+            }
         }
 
-        // Checklist Core Renderer
-        function renderHabitChecklist() {
-            habitContainer.innerHTML = '';
-            let itemsDone = 0;
+        // Functional List Management Rendering Pipeline
+        function paintHabitsMatrix() {
+            habitsListRoot.innerHTML = '';
+            let completedCounter = 0;
 
-            AppState.habits.forEach(habit => {
-                if(habit.completed) itemsDone++;
-                const row = document.createElement('div');
-                row.className = "flex items-center justify-between p-3.5 bg-neutral-900/60 border border-neutral-800 rounded-xl hover:border-neutral-700 transition-all animate-fadeIn";
-                row.innerHTML = `
+            ApplicationDatabase.habits.forEach(habit => {
+                if (habit.done) completedCounter++;
+                
+                const elementRow = document.createElement('div');
+                elementRow.className = "flex items-center justify-between p-3.5 bg-neutral-900/50 border border-[#232c28] rounded-xl hover:border-neutral-800 transition-all";
+                
+                elementRow.innerHTML = `
                     <div class="flex items-center gap-3">
-                        <div onclick="toggleHabitState(${habit.id})" class="w-4 h-4 rounded-full border border-neutral-600 flex items-center justify-center cursor-pointer transition-all ${habit.completed ? 'bg-emerald-500 border-emerald-400' : ''}">
-                            ${habit.completed ? '<i data-lucide="check" class="w-2.5 h-2.5 text-neutral-950 stroke-[4]"></i>' : ''}
+                        <div onclick="toggleHabitCompletion(${habit.id})" class="w-4 h-4 rounded border border-neutral-700 flex items-center justify-center cursor-pointer transition-all ${habit.done ? 'bg-emerald-500 border-emerald-400' : ''}">
+                            ${habit.done ? '<i data-lucide="check" class="w-2.5 h-2.5 text-neutral-950 stroke-[3]"></i>' : ''}
                         </div>
-                        <span class="text-sm font-medium ${habit.completed ? 'text-neutral-500 line-through' : 'text-neutral-200'}">${habit.text}</span>
-                        ${habit.priority ? '<span class="text-[9px] font-black bg-amber-500/10 border border-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded uppercase">Must</span>' : ''}
+                        <span class="text-sm font-medium ${habit.done ? 'text-neutral-500 line-through' : 'text-neutral-200'}">${habit.label}</span>
+                        ${habit.isMust ? '<span id="must-pill-${habit.id}" class="text-[9px] font-extrabold bg-amber-500/10 border border-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">MUST</span>' : ''}
                     </div>
                     <div class="flex items-center gap-2 text-neutral-500">
-                        <button onclick="removeHabitElement(${habit.id})" class="p-1 hover:text-rose-400 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                        <button onclick="toggleHabitUrgency(${habit.id})" class="p-1 hover:text-amber-400 transition-colors ${habit.isMust ? 'text-amber-500' : ''}">
+                            <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="deleteHabitRow(${habit.id})" class="p-1 hover:text-rose-400 transition-colors">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
                     </div>
                 `;
-                habitContainer.appendChild(row);
+                habitsListRoot.appendChild(elementRow);
             });
 
-            const percentage = AppState.habits.length ? Math.round((itemsDone / AppState.habits.length) * 100) : 0;
-            completionRatioText.textContent = `${itemsDone}/${AppState.habits.length} Done (${percentage}%)`;
+            habitProgressText.textContent = `${completedCounter}/${ApplicationDatabase.habits.length} Done`;
             lucide.createIcons();
         }
 
-        window.toggleHabitState = (id) => {
-            const h = AppState.habits.find(item => item.id === id);
-            if(h) h.completed = !h.completed;
-            renderHabitChecklist();
+        // Mutation Handler Implementations
+        window.toggleHabitCompletion = (id) => {
+            const currentObj = ApplicationDatabase.habits.find(item => item.id === id);
+            if (currentObj) currentObj.done = !currentObj.done;
+            paintHabitsMatrix();
         };
 
-        window.removeHabitElement = (id) => {
-            AppState.habits = AppState.habits.filter(item => item.id !== id);
-            renderHabitChecklist();
+        window.toggleHabitUrgency = (id) => {
+            const currentObj = ApplicationDatabase.habits.find(item => item.id === id);
+            if (currentObj) currentObj.isMust = !currentObj.isMust;
+            paintHabitsMatrix();
         };
 
-        document.getElementById('add-habit-btn').addEventListener('click', () => {
-            const inp = document.getElementById('custom-habit-input');
-            if(!inp.value.trim()) return;
-            AppState.habits.push({ id: Date.now(), text: inp.value.trim(), completed: false, priority: false });
-            inp.value = '';
-            renderHabitChecklist();
+        window.deleteHabitRow = (id) => {
+            ApplicationDatabase.habits = ApplicationDatabase.habits.filter(item => item.id !== id);
+            paintHabitsMatrix();
+        };
+
+        submitHabitBtn.addEventListener('click', () => {
+            const stringRaw = addHabitInput.value.trim();
+            if (!stringRaw) return;
+            ApplicationDatabase.habits.push({
+                id: Date.now(),
+                label: stringRaw,
+                done: false,
+                isMust: false
+            });
+            addHabitInput.value = '';
+            paintHabitsMatrix();
         });
 
-        // Breathing Sequence Sub-Engine
-        submitThoughtBtn.addEventListener('click', () => {
-            if(!thoughtTextarea.value.trim()) return;
-            inputCard.classList.add('hidden');
-            breathingCard.classList.remove('hidden');
-            AppState.currentBreathIndex = 0;
-            executeBreathingLoop();
+        // Somatic Sequencer Workflow Management Loop
+        getClarityBtn.addEventListener('click', () => {
+            if (!thoughtInput.value.trim()) return;
+            // Lock down app to reveal full-screen breathing transition layer
+            breathingModalOverlay.classList.remove('hidden');
+            ApplicationDatabase.activeBreathIndex = 0;
+            triggerBreathingTickCycle();
         });
 
-        document.getElementById('skip-breathing-btn').addEventListener('click', finishBreathingTransition);
+        document.getElementById('skip-breathing-modal').addEventListener('click', skipSomaticTransition);
 
-        function executeBreathingLoop() {
-            clearInterval(AppState.breathTimer);
-            const step = AppState.breathingPhases[AppState.currentBreathIndex];
+        function triggerBreathingTickCycle() {
+            clearInterval(ApplicationDatabase.intervalTracker);
             
-            const node = document.getElementById('breath-node');
-            const phaseTxt = document.getElementById('breath-phase-text');
-            const timerTxt = document.getElementById('breath-timer-text');
-            const instructTxt = document.getElementById('breath-instruction-text');
+            const targetStep = ApplicationDatabase.breathingSteps[ApplicationDatabase.activeBreathIndex];
+            let counterTime = targetStep.duration;
 
-            node.className = "breath-circle w-40 h-40 rounded-full border-4 border-emerald-500 flex flex-col items-center justify-center shadow-lg " + step.cls;
-            phaseTxt.textContent = step.title;
-            instructTxt.textContent = step.instruction;
+            // Apply Visual Style Alignments
+            breathingSphereNode.style.backgroundColor = targetStep.bg;
+            breathingSphereNode.style.transform = targetStep.scale === 'scale-[1.25]' ? 'scale(1.25)' : targetStep.scale === 'scale-[0.95]' ? 'scale(0.95)' : 'scale(1.1)';
             
-            let timeLeft = step.time;
-            timerTxt.textContent = `${timeLeft}s`;
+            breathStateLabel.textContent = targetStep.label;
+            breathTimerDisplay.textContent = `${counterTime}s`;
+            breathInstructionLabel.textContent = targetStep.desc;
 
-            AppState.breathTimer = setInterval(() => {
-                timeLeft--;
-                timerTxt.textContent = `${timeLeft}s`;
-                if(timeLeft <= 0) {
-                    clearInterval(AppState.breathTimer);
-                    AppState.currentBreathIndex++;
-                    if(AppState.currentBreathIndex >= AppState.breathingPhases.length) {
-                        finishBreathingTransition();
+            ApplicationDatabase.intervalTracker = setInterval(() => {
+                counterTime--;
+                breathTimerDisplay.textContent = `${counterTime}s`;
+
+                if (counterTime <= 0) {
+                    clearInterval(ApplicationDatabase.intervalTracker);
+                    ApplicationDatabase.activeBreathIndex++;
+
+                    if (ApplicationDatabase.activeBreathIndex >= ApplicationDatabase.breathingSteps.length) {
+                        skipSomaticTransition(); // Transition workflow finishes cleanly
                     } else {
-                        executeBreathingLoop();
+                        triggerBreathingTickCycle();
                     }
                 }
             }, 1000);
         }
 
-        function finishBreathingTransition() {
-            clearInterval(AppState.breathTimer);
-            breathingCard.classList.add('hidden');
-            inputCard.classList.remove('hidden');
+        function skipSomaticTransition() {
+            clearInterval(ApplicationDatabase.intervalTracker);
+            breathingModalOverlay.classList.add('hidden');
             
-            // Build AI Output Targets dynamically
-            const targetList = document.getElementById('ai-plan-list-target');
-            document.getElementById('ai-insight-target').textContent = "I am calm, I am capable, I am present.";
+            // Build out action list directly map matching the studio architecture input flow
+            aiPhraseTarget.textContent = "I am calm, I am capable, I am present.";
             
-            const dummyPlans = [
+            const dummyDataSteps = [
                 "Acknowledge the feeling and take three deep, mindful breaths.",
                 "Identify one tiny, accomplishable task to complete within the next 30 minutes.",
                 "Schedule a short period of quiet time for yourself later today."
             ];
 
-            targetList.innerHTML = dummyPlans.map((plan, idx) => `
-                <div class="flex gap-2 text-neutral-300 leading-relaxed bg-neutral-900/40 p-2.5 border border-neutral-800/60 rounded-xl">
-                    <span class="text-emerald-400 font-black font-mono">${idx + 1}.</span>
-                    <span>${plan}</span>
+            aiStepsContainer.innerHTML = dummyDataSteps.map((step, matrixIdx) => `
+                <div class="flex gap-2 text-neutral-300 leading-relaxed bg-neutral-900/30 p-3 border border-[#232c28] rounded-xl">
+                    <span class="text-emerald-400 font-bold font-mono">${matrixIdx + 1}.</span>
+                    <span>${step}</span>
                 </div>
             `).join('');
 
-            aiResponseCard.classList.remove('hidden');
-            thoughtTextarea.value = '';
+            aiResponsePlanBox.classList.remove('hidden');
+            thoughtInput.value = '';
             charCounter.textContent = "0/500";
         }
 
-        // Sidebar Sliders Events
-        document.getElementById('sidebar-toggle-btn').addEventListener('click', () => document.getElementById('history-sidebar').classList.remove('hidden'));
-        document.getElementById('sidebar-close-btn').addEventListener('click', () => document.getElementById('history-sidebar').classList.add('hidden'));
-        document.getElementById('sidebar-backdrop').addEventListener('click', () => document.getElementById('history-sidebar').classList.add('hidden'));
-
-        // Boot Init Call
-        renderHabitChecklist();
+        // Initialize Native Interface Framework Build
+        paintHabitsMatrix();
     </script>
 </body>
 </html>
